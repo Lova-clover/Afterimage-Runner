@@ -1,0 +1,50 @@
+# Project License
+
+Copyright (c) 2026 Afterimage Runner contributors
+
+This repository contains both source code and original game content. They are licensed separately.
+
+## 1. Source Code License
+
+The source code in this repository is licensed under the MIT License.
+
+For the purposes of this license, "source code" means the implementation files needed to run or modify the web application, including:
+
+- `index.html`
+- `src/`
+- `scripts/`
+- `package.json`
+- `package-lock.json`
+- build and project configuration files, if added later
+
+MIT License:
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of the source code and associated documentation files covered by this section (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT, OR OTHERWISE, ARISING FROM, OUT OF, OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+## 2. Game Content and Creative Asset License
+
+All original game content and creative assets are not covered by the MIT License above unless explicitly stated otherwise in writing.
+
+This reserved content includes, but is not limited to:
+
+- visual assets in `public/assets/`
+- character artwork, ghost artwork, UI artwork, effects, icons, and logo files
+- the names "잔상탈출: 러너-07", "Afterimage Runner", "Runner-07", "Archive-20", and "REWIND RUNNER SYSTEM"
+- story text, ending text, room names, room concepts, level layouts, and game narrative
+- screenshots, promotional copy, and presentation materials derived from the game
+
+You may clone, run, and review the complete repository for evaluation, judging, portfolio review, and personal non-public testing.
+
+You may not redistribute, resell, repackage, publish, or use the reserved game content and creative assets in another public or commercial project without prior written permission from the project authors.
+
+## 3. Third-Party Dependencies
+
+Third-party packages and tools are distributed under their own licenses. See `package-lock.json` and the relevant package metadata for details.
+
+## 4. Contributions
+
+Unless agreed otherwise in writing, contributions to source code are provided under the MIT License, and contributions to game content or creative assets are provided under the reserved content terms above.
