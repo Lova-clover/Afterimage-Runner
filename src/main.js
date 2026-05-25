@@ -177,7 +177,7 @@ const generatedAssets = {
   lock: "/assets/generated/lock-icon.png",
   trophy: "/assets/generated/trophy-gold.png",
   clear: "/assets/generated/clear-badge.png",
-  mascotClear: "/assets/generated/runner-celebrate.png",
+  mascotClear: "/assets/player/sprites/hero-front.png",
 };
 
 const sprites = Object.fromEntries(
@@ -2458,8 +2458,16 @@ function updateHud() {
   syncChecklist.innerHTML = renderSyncChecklist(room);
   doorText.textContent = exitOpen ? "열림" : "잠김";
   dangerText.textContent = room.lasers.length ? "레이저" : (room.phaseGates ?? []).length ? "위상" : (room.dashGates ?? []).some((gate) => gate.syncOnly) ? "싱크" : (room.sizeGates?.length || room.items?.some((item) => item.type !== "dash")) ? "변형" : room.switches.length > 1 ? "동기화" : "낮음";
-  const pbLabel = record?.bestRoute?.length ? " · PB" : "";
-  bestText.textContent = record?.bestTime ? `${formatPrecise(record.bestTime)} · ${record.bestMedal === "platinum" ? "플래티넘" : `${record.bestStars}★`}${pbLabel}` : "--";
+  if (record?.bestTime) {
+    const medalLabel = record.bestMedal === "platinum" ? "PT" : `${record.bestStars}★`;
+    const pbLabel = record.bestRoute?.length ? "PB" : "";
+    const compactBestTime = formatPrecise(record.bestTime).replace(/^00:/, "");
+    bestText.innerHTML = `<span>${compactBestTime}</span><small>${[medalLabel, pbLabel].filter(Boolean).join(" · ")}</small>`;
+    bestText.title = `${formatPrecise(record.bestTime)} · ${record.bestMedal === "platinum" ? "Platinum" : `${record.bestStars} stars`}${pbLabel ? " · personal best" : ""}`;
+  } else {
+    bestText.textContent = "--";
+    bestText.removeAttribute("title");
+  }
   const guidanceVisible = hasCanvasGuidance();
   const mechanicIntro = mechanicIntros.get(state.roomIndex);
   const mechanicVisible = Boolean(mechanicIntro) && !guidanceVisible;

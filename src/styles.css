@@ -643,6 +643,7 @@ button:disabled {
 }
 
 .status-list div {
+  min-width: 0;
   border: 1px solid rgba(122, 77, 242, 0.2);
   border-radius: 8px;
   padding: 7px 8px;
@@ -652,7 +653,35 @@ button:disabled {
 .status-list strong {
   display: block;
   margin-top: 4px;
-  font-size: 0.92rem;
+  overflow: hidden;
+  font-size: 0.86rem;
+  font-weight: 1000;
+  line-height: 1.12;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#bestText {
+  display: grid;
+  gap: 2px;
+  overflow: visible;
+  font-size: 0.88rem;
+  text-overflow: clip;
+  white-space: normal;
+}
+
+#bestText span,
+#bestText small {
+  display: block;
+  overflow: hidden;
+  line-height: 1.05;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#bestText small {
+  color: #6d5ad4;
+  font-size: 0.56rem;
   font-weight: 1000;
 }
 
@@ -1679,8 +1708,15 @@ button:disabled {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(190px, 250px);
   column-gap: 24px;
-  width: min(980px, 100%);
-  overflow: hidden;
+  width: min(980px, calc(100vw - 32px));
+  max-height: calc(100dvh - 32px);
+  overflow: auto;
+  scrollbar-gutter: stable;
+}
+
+.result h1 {
+  font-size: 3.45rem;
+  line-height: 1;
 }
 
 .result::before {
@@ -1736,7 +1772,8 @@ button:disabled {
 
 #resultMascot {
   align-self: end;
-  max-height: 178px;
+  max-height: 166px;
+  object-fit: contain;
 }
 
 #resultBadge {
@@ -1905,15 +1942,15 @@ button:disabled {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 10px;
-  margin: 20px 0;
+  margin: 14px 0;
 }
 
 .result-stars {
-  margin-top: 14px;
+  margin-top: 10px;
   color: var(--gold);
-  font-size: clamp(2rem, 5vw, 3.4rem);
+  font-size: 2.7rem;
   font-weight: 1000;
-  letter-spacing: 0.12em;
+  letter-spacing: 0;
   text-shadow:
     0 4px 0 rgba(16, 9, 43, 0.16),
     0 0 22px rgba(255, 209, 102, 0.34);
@@ -2075,7 +2112,7 @@ button:disabled {
 
 .result-grid div {
   border-radius: 8px;
-  padding: 14px;
+  padding: 12px;
   background: #f4eaff;
 }
 
@@ -2090,7 +2127,7 @@ button:disabled {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
-  margin: -6px 0 18px;
+  margin: -2px 0 14px;
 }
 
 .result-insight div {
@@ -2174,23 +2211,24 @@ button:disabled {
 .result-advice {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  margin: -4px 0 20px;
+  gap: 6px;
+  margin: -2px 0 14px;
 }
 
 .result-advice span {
   max-width: 100%;
   border: 1px solid rgba(30, 220, 197, 0.36);
   border-radius: 999px;
-  padding: 8px 12px;
+  padding: 6px 10px;
   background:
     linear-gradient(135deg, rgba(30, 220, 197, 0.18), transparent 55%),
     #fffefb;
   color: #24485a;
-  font-size: 0.86rem;
+  font-size: 0.78rem;
   font-weight: 1000;
   line-height: 1.25;
-  overflow-wrap: anywhere;
+  overflow-wrap: normal;
+  white-space: nowrap;
   box-shadow: 0 10px 20px rgba(16, 9, 43, 0.08);
 }
 
@@ -2198,6 +2236,113 @@ button:disabled {
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
+}
+
+.stage-panel > .modal-actions {
+  justify-content: flex-end;
+  margin-top: 16px;
+}
+
+.slideshow .modal-actions {
+  justify-content: flex-end;
+}
+
+#startButton {
+  order: 1;
+}
+
+#introBackButton {
+  order: 2;
+}
+
+@media (max-height: 760px) and (min-width: 981px) {
+  .modal-panel.result {
+    grid-template-columns: minmax(0, 1fr) 220px;
+    column-gap: 18px;
+    max-height: calc(100dvh - 24px);
+    padding: 18px;
+  }
+
+  .result h1 {
+    font-size: 2.85rem;
+  }
+
+  .result p {
+    font-size: 0.92rem;
+    line-height: 1.35;
+  }
+
+  .result-hero {
+    min-height: 198px;
+  }
+
+  #resultMascot {
+    max-height: 126px;
+  }
+
+  #resultBadge {
+    max-height: 68px;
+  }
+
+  .result-stars {
+    margin-top: 6px;
+    font-size: 2.25rem;
+  }
+
+  .result-replay {
+    gap: 7px;
+    padding: 9px;
+  }
+
+  .replay-track {
+    min-height: 44px;
+  }
+
+  .result-grid {
+    gap: 8px;
+    margin: 10px 0;
+  }
+
+  .result-grid div,
+  .result-insight div {
+    padding: 9px;
+  }
+
+  .result-grid strong {
+    font-size: 1.1rem;
+  }
+
+  .result-insight {
+    gap: 8px;
+    margin: 0 0 10px;
+  }
+
+  .result-insight img {
+    width: 30px;
+    height: 30px;
+  }
+
+  .result-insight strong {
+    font-size: 0.72rem;
+  }
+
+  .result-advice {
+    margin-bottom: 10px;
+  }
+}
+
+@media (max-height: 640px) and (min-width: 981px) {
+  .modal-panel.result {
+    grid-template-columns: 1fr;
+  }
+
+  .result-hero {
+    display: none;
+  }
+
+  .result h1 {
+    font-size: 2.35rem;
+  }
 }
 
 @keyframes toastPop {
@@ -2255,7 +2400,53 @@ button:disabled {
 
   .result-hero {
     grid-row: auto;
-    min-height: 190px;
+    min-height: 150px;
+  }
+
+  .modal-panel.result {
+    width: min(100%, calc(100vw - 24px));
+    max-height: calc(100dvh - 24px);
+    padding: 18px;
+  }
+
+  .result h1 {
+    font-size: 2.35rem;
+    line-height: 1.06;
+  }
+
+  .result p {
+    font-size: 0.92rem;
+    line-height: 1.4;
+  }
+
+  #resultMascot {
+    max-height: 96px;
+  }
+
+  #resultBadge {
+    max-height: 58px;
+  }
+
+  .result-stars {
+    font-size: 2rem;
+  }
+
+  .result-grid {
+    gap: 7px;
+    margin: 9px 0;
+  }
+
+  .result-grid div {
+    padding: 9px;
+  }
+
+  .result-insight {
+    gap: 7px;
+    margin-bottom: 9px;
+  }
+
+  .result-advice span {
+    white-space: normal;
   }
 
   .pause-button {
