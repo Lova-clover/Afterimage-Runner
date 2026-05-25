@@ -191,5 +191,6 @@ This repository uses a split license:
 
 - Source code is licensed under the MIT License.
 - Game assets, story text, room concepts, level design, logo, branding, screenshots, and other creative content are reserved by the project authors.
+- Web typography uses **Galmuri11** by Minseo Lee, distributed under the SIL Open Font License 1.1.
 
 See [LICENSE](./LICENSE) for details.

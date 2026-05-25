@@ -19,6 +19,18 @@ const requiredFiles = [
   "public/assets/ui/tutorial_sheet.png",
   "public/assets/ui/logo_banners.png",
   "public/assets/vfx/rewind_vfx.png",
+  "public/assets/generated/switch-pad.png",
+  "public/assets/generated/record-marker.png",
+  "public/assets/generated/laser-gate-closed.png",
+  "public/assets/generated/laser-gate-open.png",
+  "public/assets/generated/crystal-core.png",
+  "public/assets/generated/exit-portal.png",
+  "public/assets/generated/boost-orb.png",
+  "public/assets/generated/small-platform.png",
+  "public/assets/generated/lock-icon.png",
+  "public/assets/generated/trophy-gold.png",
+  "public/assets/generated/clear-badge.png",
+  "public/assets/generated/runner-celebrate.png",
 ];
 
 const spriteDirs = [
@@ -27,6 +39,7 @@ const spriteDirs = [
   "public/assets/ui/sprites",
   "public/assets/ui/slides",
   "public/assets/vfx/sprites",
+  "public/assets/generated",
 ];
 
 const forbidden = [

@@ -1,5 +1,9 @@
 import "./styles.css";
 
+const loadingOverlay = document.querySelector("#loadingOverlay");
+const loadingBar = document.querySelector("#loadingBar");
+const loadingPercent = document.querySelector("#loadingPercent");
+const loadingMessage = document.querySelector("#loadingMessage");
 const canvas = document.querySelector("#gameCanvas");
 const ctx = canvas.getContext("2d");
 const canvasCard = document.querySelector(".canvas-card");
@@ -38,6 +42,7 @@ const continueButton = document.querySelector("#continueButton");
 const tutorialButton = document.querySelector("#tutorialButton");
 const stageSelectButton = document.querySelector("#stageSelectButton");
 const stageBackButton = document.querySelector("#stageBackButton");
+const stageRouteTabs = document.querySelector("#stageRouteTabs");
 const stageSummary = document.querySelector("#stageSummary");
 const stageGrid = document.querySelector("#stageGrid");
 const startButton = document.querySelector("#startButton");
@@ -53,6 +58,9 @@ const resultKicker = document.querySelector("#resultKicker");
 const resultTitle = document.querySelector("#resultTitle");
 const resultBody = document.querySelector("#resultBody");
 const resultAdvice = document.querySelector("#resultAdvice");
+const resultInsight = document.querySelector("#resultInsight");
+const resultMascot = document.querySelector("#resultMascot");
+const resultBadge = document.querySelector("#resultBadge");
 const finalStars = document.querySelector("#finalStars");
 const finalLoops = document.querySelector("#finalLoops");
 const finalEchoes = document.querySelector("#finalEchoes");
@@ -75,7 +83,7 @@ const PB_TRACE_RATE = 1 / 12;
 const BASE_SPEED = 286;
 const DASH_SPEED = 820;
 const DASH_BUFFER_SECONDS = 0.16;
-const CANVAS_GUIDE_ROOMS = 3;
+const CANVAS_GUIDE_ROOMS = 1;
 const PHASE_SECONDS = 4.2;
 const JUDGE_CLEAR_INDEX = 11;
 const OFFICIAL_TARGET_SECONDS = 600;
@@ -88,6 +96,15 @@ let lastTime = performance.now();
 let animationId = 0;
 let canvasResizeObserver = null;
 let audioContext = null;
+let loadingStartedAt = performance.now();
+
+const loadingMessages = [
+  "실패 로그를 복원하고 있습니다.",
+  "잔상 경로를 동기화하는 중...",
+  "스위치 기록을 확인하는 중...",
+  "20번째 문을 스캔하는 중...",
+  "러너-07의 다음 루프를 준비하는 중...",
+];
 
 function fitCanvasToCard() {
   if (!canvasCard) return;
@@ -148,6 +165,21 @@ const spritePaths = {
   "final-explosion": "/assets/vfx/sprites/final-explosion.png",
 };
 
+const generatedAssets = {
+  switch: "/assets/generated/switch-pad.png",
+  record: "/assets/generated/record-marker.png",
+  laser: "/assets/generated/laser-gate-closed.png",
+  laserOpen: "/assets/generated/laser-gate-open.png",
+  core: "/assets/generated/crystal-core.png",
+  exit: "/assets/generated/exit-portal.png",
+  boost: "/assets/generated/boost-orb.png",
+  platform: "/assets/generated/small-platform.png",
+  lock: "/assets/generated/lock-icon.png",
+  trophy: "/assets/generated/trophy-gold.png",
+  clear: "/assets/generated/clear-badge.png",
+  mascotClear: "/assets/generated/runner-celebrate.png",
+};
+
 const sprites = Object.fromEntries(
   Object.entries(spritePaths).map(([name, src]) => {
     const image = new Image();
@@ -155,6 +187,60 @@ const sprites = Object.fromEntries(
     return [name, image];
   }),
 );
+
+function updateLoadingProgress(progress, messageIndex = 0) {
+  const pct = clamp(Math.round(progress * 100), 0, 100);
+  if (loadingBar) loadingBar.style.transform = `scaleX(${pct / 100})`;
+  if (loadingPercent) loadingPercent.textContent = `${pct}%`;
+  if (loadingMessage) loadingMessage.textContent = loadingMessages[messageIndex % loadingMessages.length];
+}
+
+function preloadImage(src) {
+  return new Promise((resolve) => {
+    const image = new Image();
+    image.onload = () => resolve(true);
+    image.onerror = () => resolve(false);
+    image.src = src;
+  });
+}
+
+async function warmupLoadingScreen() {
+  if (!loadingOverlay) return;
+  const assets = [
+    ...new Set([
+      ...Object.values(spritePaths),
+      ...Object.values(generatedAssets),
+      "/assets/ui/sprites/logo.png",
+      "/assets/ui/slides/story-1.png",
+      "/assets/ui/slides/story-2.png",
+      "/assets/ui/slides/story-3.png",
+    ]),
+  ];
+  const minVisibleMs = 720;
+  const maxVisibleMs = 1650;
+  let done = 0;
+  updateLoadingProgress(0, 0);
+
+  const preloadWork = Promise.all(
+    assets.map((src, index) =>
+      preloadImage(src).then(() => {
+        done += 1;
+        updateLoadingProgress(done / assets.length, index);
+      }),
+    ),
+  );
+  const minimumWait = new Promise((resolve) => setTimeout(resolve, minVisibleMs));
+  const maximumWait = new Promise((resolve) => setTimeout(resolve, maxVisibleMs));
+
+  await Promise.race([Promise.all([preloadWork, minimumWait]), maximumWait]);
+  updateLoadingProgress(1, loadingMessages.length - 1);
+  const elapsed = performance.now() - loadingStartedAt;
+  const fadeDelay = elapsed < minVisibleMs ? minVisibleMs - elapsed : 120;
+  setTimeout(() => {
+    loadingOverlay.classList.add("is-done");
+    loadingOverlay.addEventListener("transitionend", () => loadingOverlay.remove(), { once: true });
+  }, fadeDelay);
+}
 
 const introSlides = [
   {
@@ -705,9 +791,56 @@ const mechanicIntros = new Map([
   [12, { title: "위상 코어", body: "보라 코어는 잠깐 벽의 충돌을 지운다. 멈추지 말고 지나가라." }],
 ]);
 
+const stageStoryTags = [
+  "실패가 문을 잡는다",
+  "멈춘 기록이 방패가 된다",
+  "열린 길을 대시로 잇는다",
+  "고스트 곁에서 싱크",
+  "몸을 바꾼 실패",
+  "잘못된 기록을 다시 설계",
+  "의도되지 않은 경로",
+  "방패가 된 기록",
+  "혼자 열 수 없는 문",
+  "삭제 권유를 거절",
+  "완벽할수록 외로워진다",
+  "공식 탈출과 삭제 요청",
+  "출구 앞에서 멈춤",
+  "기록에 없는 방",
+  "흔들리는 잔상",
+  "잔상을 구하는 현재",
+  "삭제실 통과",
+  "마지막 싱크",
+  "0번째 기록",
+  "삭제된 나를 데려간다",
+];
+
+const roomMemoryAnchors = [
+  "첫 실패가 다음 문을 잡아준다.",
+  "멈춘 기록이 빛 앞에서 방패가 된다.",
+  "맡긴 스위치와 현재의 대시가 한 길로 이어진다.",
+  "고스트 곁에서 맞춘 박자가 장벽을 끊는다.",
+  "바꾼 몸도 실패의 일부로 남는다.",
+  "삭제는 포기가 아니라 다시 만드는 권한이다.",
+  "아카이브가 의도하지 않은 길을 처음 본다.",
+  "도망치지 못한 기록이 현재를 기다린다.",
+  "혼자가 아니라서 동시에 열 수 있다.",
+  "정리되지 않은 실패가 더 많은 길을 남긴다.",
+  "완벽한 기록보다 뒤에 남은 발자국이 중요해진다.",
+  "공식 탈출은 끝이 아니라 삭제 요청이다.",
+  "러너-07은 출구 앞에서 뒤를 돌아본다.",
+  "기록에 없는 방은 대답 대신 열린다.",
+  "오래 버려진 잔상이 다시 이름을 찾는다.",
+  "이번에는 현재가 잔상을 구한다.",
+  "삭제 대기 로그가 문을 거부한다.",
+  "모든 잔상이 같은 방향으로 달린다.",
+  "아무것도 못 연 실패가 포기하지 않았다는 증거가 된다.",
+  "20번째 문은 삭제된 나를 다시 데려가는 문이다.",
+];
+
 const state = {
   screen: "menu",
   introIndex: 0,
+  stageFilter: "all",
   roomIndex: 0,
   replayTime: 0,
   stageTime: 0,
@@ -896,6 +1029,12 @@ function showStageSelect() {
 }
 
 function renderStageSelect() {
+  if (stageRouteTabs) {
+    stageRouteTabs.querySelectorAll("[data-stage-filter]").forEach((button) => {
+      button.classList.toggle("is-active", button.dataset.stageFilter === state.stageFilter);
+    });
+  }
+  if (stagePanel) stagePanel.dataset.filter = state.stageFilter;
   if (stageSummary) {
     const officialPar = campaignParTime(JUDGE_CLEAR_INDEX + 1);
     const officialBest = bestCampaignTime(JUDGE_CLEAR_INDEX + 1);
@@ -905,9 +1044,13 @@ function renderStageSelect() {
       <span><strong>내 공식 최고</strong>${officialBest == null ? "--" : formatPrecise(officialBest)}</span>
     `;
   }
-  stageGrid.innerHTML = rooms
-    .map((room, index) => {
-      const record = state.progress.stages[index] ?? {};
+  const visibleRooms = rooms
+    .map((room, index) => ({ room, index, record: state.progress.stages[index] ?? {} }))
+    .filter(({ index, record }) => isStageVisible(index, record));
+
+  stageGrid.innerHTML = visibleRooms.length
+    ? visibleRooms
+    .map(({ room, index, record }) => {
       const ahead = index > state.progress.unlocked;
       const stars = "★".repeat(record.bestStars || 0).padEnd(3, "☆");
       const best = record.bestTime ? formatPrecise(record.bestTime) : "--";
@@ -917,39 +1060,65 @@ function renderStageSelect() {
       const challengeLabel = platinumDone ? "플래티넘 달성" : record.bestStars >= 3 ? "플래티넘 도전" : ahead ? "심사용 개방" : "첫 도전";
       const challengeClass = platinumDone ? "is-platinum" : record.bestStars >= 3 ? "is-available" : "is-none";
       const routeLabel = index <= JUDGE_CLEAR_INDEX ? "공식 루트" : "고급 아카이브";
-      const pbText = record.bestRoute?.length ? `<span class="pace-pill">PB 페이스</span>` : "";
+      const pbText = record.bestRoute?.length ? `<em>PB 페이스</em>` : "";
       const routeClass = index <= JUDGE_CLEAR_INDEX ? "is-official-route" : "is-hidden-route";
-      const mechanics = roomMechanicTags(room, index).map((tag) => `<i>${tag}</i>`).join("");
+      const mechanics = roomMechanicTags(room, index)
+        .map((tag) => `<i><img src="${tag.asset}" alt="" />${tag.label}</i>`)
+        .join("");
       return `
         <button class="stage-card ${routeClass}" data-stage="${index}" type="button">
-          <small>${index <= JUDGE_CLEAR_INDEX ? "공식" : "비인가"} · 방 ${index + 1}</small>
-          <strong>${room.name}</strong>
+          <span class="stage-number">${index + 1}</span>
+          <span class="stage-copy">
+            <small>${index <= JUDGE_CLEAR_INDEX ? "공식" : "비인가"} · 방 ${index + 1}</small>
+            <strong>${room.name}</strong>
+          </span>
           <span class="route-pill">${routeLabel}</span>
           <span class="mechanic-row">${mechanics}</span>
-          <span>3★ 조건 ${room.parGhosts}잔상 / ${room.parTime}초</span>
-          <span>최고 기록 ${best}</span>
-          <span>${designerText}</span>
-          ${pbText}
+          <span class="story-pill">${stageStoryTag(index)}</span>
+          <span class="stage-targets"><em>3★ ${room.parGhosts}잔상 / ${room.parTime}초</em><em>최고 ${best}</em></span>
+          <span class="stage-targets"><em>${designerText}</em>${pbText}</span>
           <span class="stars">${stars}</span>
           <span class="medal-pill ${challengeClass}">${challengeLabel}</span>
         </button>
       `;
     })
-    .join("");
+    .join("")
+    : `<div class="stage-empty"><strong>아직 기록이 없습니다.</strong><span>공식 루트에서 한 방을 클리어하면 기록 경쟁 목록에 표시됩니다.</span></div>`;
+}
+
+function isStageVisible(index, record) {
+  if (state.stageFilter === "official") return index <= JUDGE_CLEAR_INDEX;
+  if (state.stageFilter === "hidden") return index > JUDGE_CLEAR_INDEX;
+  if (state.stageFilter === "records") return record.bestStars > 0 || index < 4;
+  return true;
 }
 
 function roomMechanicTags(room, index) {
   const tags = [];
-  if (room.switches.length) tags.push("스위치");
-  if (room.lasers.length) tags.push("빔");
-  if ((room.dashGates ?? []).length || room.items?.some((item) => item.type === "dash")) tags.push("대시");
-  if (room.items?.some((item) => item.type === "grow" || item.type === "shrink") || room.sizeGates?.length) tags.push("변형");
-  if ((room.phaseGates ?? []).length || room.items?.some((item) => item.type === "phase")) tags.push("위상");
-  if ((room.dashGates ?? []).some((gate) => gate.syncOnly)) tags.push("싱크");
-  if (index === JUDGE_CLEAR_INDEX) tags.push("공식");
-  if (index === rooms.length - 1) tags.push("진짜 문");
-  if (!tags.length) tags.push("코어");
+  if (room.switches.length) tags.push({ label: "스위치", asset: generatedAssets.switch });
+  if (room.lasers.length) tags.push({ label: "빔", asset: generatedAssets.laser });
+  if ((room.dashGates ?? []).length || room.items?.some((item) => item.type === "dash")) {
+    tags.push({ label: "대시", asset: generatedAssets.boost });
+  }
+  if (room.items?.some((item) => item.type === "grow" || item.type === "shrink") || room.sizeGates?.length) {
+    tags.push({ label: "변형", asset: generatedAssets.record });
+  }
+  if ((room.phaseGates ?? []).length || room.items?.some((item) => item.type === "phase")) {
+    tags.push({ label: "위상", asset: generatedAssets.laserOpen });
+  }
+  if ((room.dashGates ?? []).some((gate) => gate.syncOnly)) tags.push({ label: "싱크", asset: generatedAssets.record });
+  if (index === JUDGE_CLEAR_INDEX) tags.push({ label: "공식", asset: generatedAssets.trophy });
+  if (index === rooms.length - 1) tags.push({ label: "진짜 문", asset: generatedAssets.exit });
+  if (!tags.length) tags.push({ label: "코어", asset: generatedAssets.core });
   return tags.slice(0, 4);
+}
+
+function stageStoryTag(index) {
+  return stageStoryTags[index] ?? "실패를 설계하는 방";
+}
+
+function roomMemoryAnchor(index = state.roomIndex) {
+  return roomMemoryAnchors[index] ?? "실패는 삭제되지 않고 길이 된다.";
 }
 
 function startGame(index = 0, options = {}) {
@@ -1087,10 +1256,16 @@ function restartLoop(saveEcho = true, reason = "RECORD") {
     state.echoes.push(echo);
     state.echoPower = Math.min(6, state.echoPower + 1);
     const firstArchiveLog = state.roomIndex === 0 && echo.id === 1;
-    showToast(firstArchiveLog ? "실패 로그 저장" : `G${echo.id} 기록`, firstArchiveLog ? "이전의 너는 사라지지 않는다." : describeEchoRole(echo));
+    const role = describeEchoRole(echo);
+    const equipment = echoEquipmentCopy(role);
+    showToast(
+      firstArchiveLog ? "실패 로그 저장" : equipment.title,
+      firstArchiveLog ? "이전의 너는 사라지지 않는다. 방금 기록이 다음 문을 연다." : equipment.body,
+    );
     playSfx("record");
-    floating(`G${echo.id}`, state.player.x, state.player.y - 48, echo.color);
+    floating(`G${echo.id} · ${compactEchoRole(role)}`, state.player.x, state.player.y - 48, echo.color);
     burst(state.player.x, state.player.y, echo.color, 34);
+    sparkleEchoRoute(samples, echo.color);
     state.screenShake = 0.1;
   } else if (saveEcho) {
     showToast("기록할 움직임이 없다", hasCanvasGuidance() ? "조금 움직인 뒤 R." : "");
@@ -1274,11 +1449,14 @@ function finishStage() {
       : result.stars >= 3
       ? room.clearLine
       : result.misses[0] ?? room.clearLine;
+  if (resultMascot) resultMascot.src = generatedAssets.mascotClear;
+  if (resultBadge) resultBadge.src = finalRoom || judgeClear ? generatedAssets.trophy : generatedAssets.clear;
   finalStars.textContent = "★".repeat(result.stars).padEnd(3, "☆");
   finalLoops.textContent = String(state.loopNumber);
   finalEchoes.textContent = `${result.ghosts} / ${room.parGhosts}`;
   finalTime.textContent = formatPrecise(result.time);
   renderLoopReplay(result, room, finalRoom, judgeClear);
+  if (resultInsight) resultInsight.innerHTML = renderResultInsight(result, room, finalRoom, judgeClear);
   const enterLabel = finalRoom ? "Enter 처음부터" : judgeClear ? "Enter 기록 더 보기" : "Enter 다음";
   const menuLabel = judgeClear ? "M 탈출한다" : "M 메뉴";
   resultAdvice.innerHTML = `${renderResultAdvice(result, room, finalRoom, judgeClear)}<span>${enterLabel}</span><span>R 다시</span><span>${menuLabel}</span>`;
@@ -1303,25 +1481,36 @@ function updateCampaignRun(result) {
 
 function renderLoopReplay(result, room, finalRoom, judgeClear) {
   if (!resultReplay) return;
+  const replayEchoes = state.echoes.slice(0, MAX_GHOSTS);
   const echoes = Math.max(0, Math.min(MAX_GHOSTS, result.ghosts));
   const participants = [
-    { label: "RUNNER-07", color: "#fff3c7", current: true },
-    ...Array.from({ length: echoes }, (_, index) => ({
-      label: `G${index + 1}`,
-      color: echoColor(index),
-      current: false,
-    })),
+    { label: "RUNNER-07", color: "#fff3c7", role: "현재", current: true },
+    ...Array.from({ length: echoes }, (_, index) => {
+      const echo = replayEchoes[index];
+      const role = echo ? describeEchoRole(echo) : `G${index + 1}`;
+      return {
+        label: `G${index + 1}`,
+        color: echo?.color ?? echoColor(index),
+        role: compactEchoRole(role),
+        current: false,
+      };
+    }),
   ];
-  const title = finalRoom ? "진짜 문 루프 합창" : judgeClear ? "공식 탈출 리플레이" : "루프 합창 리플레이";
+  const title = finalRoom ? "진짜 문 합창 리플레이" : judgeClear ? "공식 탈출 리플레이" : "실패 장비 리플레이";
   const subtitle = result.ghosts
     ? `${result.ghosts}개의 실패 기록이 동시에 길을 열었다.`
     : "현재 루트가 그대로 기록되었다.";
+  const roles = participants
+    .filter((item) => !item.current)
+    .map((item) => `<span style="--color:${item.color}"><b>${item.label}</b>${item.role}</span>`)
+    .join("");
 
   resultReplay.innerHTML = `
     <div class="replay-copy">
       <strong>${title}</strong>
       <span>${subtitle}</span>
     </div>
+    ${roles ? `<div class="replay-roles">${roles}</div>` : ""}
     <div class="replay-track">
       ${participants.map((item, index) => `
         <i style="--color:${item.color}; --delay:${index * 0.16}s">
@@ -1365,11 +1554,11 @@ function calculateStageResult(room) {
 function renderResultAdvice(result, room, finalRoom, judgeClear = false) {
   if (judgeClear) {
     const officialTime = state.campaignOfficialTime ?? campaignParTime(JUDGE_CLEAR_INDEX + 1);
-    return `<span>12방 탈출 승인</span><span>공식 누적 ${formatPrecise(officialTime)} / ${formatClock(OFFICIAL_TARGET_SECONDS)}</span><span>삭제 대기 로그 발견</span><span>기록을 더 보면 진짜 문으로 간다</span>`;
+    return `<span>12방 탈출 승인</span><span>공식 누적 ${formatPrecise(officialTime)} / ${formatClock(OFFICIAL_TARGET_SECONDS)}</span><span>삭제 대기 로그 발견</span><span>여기서 끝내면 실패 기록은 사라진다</span><span>기록을 더 보면 진짜 문으로 간다</span>`;
   }
   if (finalRoom && result.stars >= 3) {
     const total = state.campaignActive ? state.campaignTime : campaignParTime();
-    return `<span>${result.designerClear ? "플래티넘 런" : "비인가 방 전부 통과"}</span><span>20방 누적 ${formatPrecise(total)} / ${formatClock(OFFICIAL_TARGET_SECONDS)}</span><span>삭제된 기록 복원</span><span>실패는 리셋되지 않았다</span>`;
+    return `<span>${result.designerClear ? "플래티넘 런" : "비인가 방 전부 통과"}</span><span>20방 누적 ${formatPrecise(total)} / ${formatClock(OFFICIAL_TARGET_SECONDS)}</span><span>삭제된 기록 복원</span><span>러너-07은 혼자 나가지 않았다</span><span>실패는 리셋되지 않았다</span>`;
   }
   const designerGap = Math.max(0, Math.ceil((result.time - result.designerTarget) * 10) / 10);
   if (!result.misses.length) {
@@ -1388,6 +1577,41 @@ function renderResultAdvice(result, room, finalRoom, judgeClear = false) {
     return tags.join("");
   }
   return [`다음 목표`, ...result.misses].map((text) => `<span>${text}</span>`).join("");
+}
+
+function renderResultInsight(result, room, finalRoom, judgeClear = false) {
+  const nextRoom = rooms[state.roomIndex + 1];
+  const successReason = result.ghosts
+    ? room.clearLine
+    : "이번 루트가 다음 실패 설계의 기준점이 되었다.";
+  const unlockText = finalRoom
+    ? "진엔딩 복원 완료"
+    : judgeClear
+      ? "비인가 기록 루트 13~20 개방"
+      : nextRoom
+        ? `방 ${state.roomIndex + 2} · ${nextRoom.name}`
+        : "아카이브 복원";
+  const learnedText = finalRoom
+    ? "전부 나야."
+    : judgeClear
+      ? "공식 탈출 뒤에 진짜 문이 남아 있다."
+      : roomMemoryAnchor();
+  const cards = [
+    { label: "왜 성공했는가", value: successReason, asset: result.ghosts ? generatedAssets.switch : generatedAssets.record },
+    { label: "새 요소 해금", value: unlockText, asset: finalRoom || judgeClear ? generatedAssets.trophy : generatedAssets.lock },
+    { label: "배운 기억", value: learnedText, asset: finalRoom ? generatedAssets.exit : generatedAssets.core },
+  ];
+  return cards
+    .map(
+      (card) => `
+        <div>
+          <img src="${card.asset}" alt="" />
+          <span>${card.label}</span>
+          <strong>${card.value}</strong>
+        </div>
+      `,
+    )
+    .join("");
 }
 
 function clearFlavorLine() {
@@ -1741,7 +1965,7 @@ function updateObjects(dt) {
   const finalRoom = state.roomIndex === rooms.length - 1;
   if (finalRoom && !state.syncWasShown && room.gates.length && room.gates.every((gate) => gateOpen(gate))) {
     state.syncWasShown = true;
-    showToast("루프 동기화");
+    showToast("루프 동기화", "모든 잔상이 같은 방향으로 달린다.");
     const gate = room.gates[0];
     burst(gate.x + gate.w / 2, gate.y + gate.h / 2, "#ffd166", 46);
   }
@@ -1750,11 +1974,12 @@ function updateObjects(dt) {
   if (exitOpen && !state.doorWasOpen) {
     state.doorWasOpen = true;
     const exitCenter = { x: room.exit.x + room.exit.w / 2, y: room.exit.y + room.exit.h / 2 };
-    burst(exitCenter.x, exitCenter.y, "#1edcc5", 32);
+    burst(exitCenter.x, exitCenter.y, finalRoom ? "#ffd166" : "#1edcc5", finalRoom ? 64 : 32);
     floating("열림", exitCenter.x, exitCenter.y - 36, "#1edcc5");
+    const judgeClear = state.roomIndex === JUDGE_CLEAR_INDEX;
     showToast(
-      finalRoom ? "진짜 문 개방" : state.roomIndex === 0 ? "좋아." : "문 개방",
-      state.roomIndex === 0 ? "방금 실패한 네가 지금의 문을 열었다." : "",
+      finalRoom ? "진짜 문 개방" : state.roomIndex === 0 ? "좋아." : judgeClear ? "공식 탈출 승인" : "문 개방",
+      finalRoom ? "삭제된 실패를 데리고 나갈 시간." : state.roomIndex === 0 ? "방금 실패한 네가 지금의 문을 열었다." : judgeClear ? "기록을 더 보면 진짜 문이 열린다." : roomMemoryAnchor(),
     );
     playSfx(finalRoom ? "win" : "gate");
   }
@@ -2721,7 +2946,8 @@ function drawModeBadge() {
 
 function drawAfterimageStatus() {
   const specialRoom = state.roomIndex >= JUDGE_CLEAR_INDEX;
-  const x = specialRoom ? 76 : 744;
+  const boxW = 236;
+  const x = specialRoom ? 76 : W - boxW - 28;
   const y = specialRoom ? 130 : 76;
   const activeCount = state.echoes.filter((echo) => !echoHasReachedEnd(echo)).length;
   const label = state.echoes.length
@@ -2730,22 +2956,22 @@ function drawAfterimageStatus() {
       : `잔상 대기 · ${state.echoes.length}/${MAX_GHOSTS}`
     : "R 기록 · 실패 로그 저장";
   const hint = state.echoes.length
-    ? state.echoes.map((echo) => `G${echo.id}`).join(" ")
+    ? state.echoes.map((echo) => `G${echo.id}:${compactEchoRole(describeEchoRole(echo))}`).join(" ")
     : "먼저 실패하세요";
 
   ctx.save();
   ctx.shadowColor = "rgba(0, 0, 0, 0.22)";
   ctx.shadowBlur = 18;
-  roundRect(x, y, 188, 70, 14, "rgba(16, 9, 43, 0.72)");
+  roundRect(x, y, boxW, 70, 14, "rgba(16, 9, 43, 0.72)");
   ctx.strokeStyle = state.echoes.length ? "rgba(30, 220, 197, 0.72)" : "rgba(255, 209, 102, 0.76)";
   ctx.lineWidth = 2;
-  roundedStroke(x, y, 188, 70, 14);
+  roundedStroke(x, y, boxW, 70, 14);
   ctx.shadowBlur = 0;
   ctx.fillStyle = state.echoes.length ? "#1edcc5" : "#ffd166";
   ctx.font = "1000 12px Inter, sans-serif";
   ctx.fillText(label, x + 14, y + 25);
   ctx.fillStyle = "#fff7e8";
-  ctx.font = "1000 18px Inter, sans-serif";
+  ctx.font = state.echoes.length > 2 ? "1000 13px Inter, sans-serif" : "1000 18px Inter, sans-serif";
   ctx.fillText(hint, x + 14, y + 50);
   if (state.echoes.length) {
     let dotX = x + 14;
@@ -2912,6 +3138,37 @@ function drawObjects() {
     ctx.arc(cx, cy, exitReachRadius(exit) * 0.72, 0, Math.PI * 2);
     ctx.fill();
     ctx.globalCompositeOperation = "source-over";
+  }
+  if (state.roomIndex === rooms.length - 1) drawTrueDoorBeacon(exit, exitOpen);
+  ctx.restore();
+}
+
+function drawTrueDoorBeacon(exit, open) {
+  const cx = exit.x + exit.w / 2;
+  const cy = exit.y + exit.h / 2 - 4;
+  const t = performance.now() / 1000;
+  ctx.save();
+  ctx.globalCompositeOperation = "lighter";
+  for (let i = 0; i < 3; i += 1) {
+    const radius = 48 + i * 24 + Math.sin(t * 3 + i) * 4;
+    ctx.strokeStyle = `rgba(255, 209, 102, ${open ? 0.42 - i * 0.08 : 0.22 - i * 0.04})`;
+    ctx.lineWidth = open ? 4 : 2;
+    ctx.setLineDash(i % 2 ? [8, 12] : []);
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  if (open) {
+    drawSprite("final-explosion", cx, cy, 170, 150, { alpha: 0.58 });
+    ctx.globalCompositeOperation = "source-over";
+    roundRect(cx - 56, cy - 88, 112, 28, 14, "rgba(16, 9, 43, 0.82)");
+    ctx.strokeStyle = "rgba(255, 209, 102, 0.92)";
+    ctx.lineWidth = 2;
+    roundedStroke(cx - 56, cy - 88, 112, 28, 14);
+    ctx.fillStyle = "#ffd166";
+    ctx.font = "1000 13px Inter, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("전부 나야", cx, cy - 69);
   }
   ctx.restore();
 }
@@ -3206,7 +3463,7 @@ function drawEchoes() {
     if (hold) {
       ctx.globalAlpha = 0.6;
       drawRunner(hold.x, hold.y, 16, echo.color, 0.6, false, hold);
-      drawGhostBadge(hold.x, hold.y - 54, "유지", echo.color);
+      drawGhostBadge(hold.x, hold.y - 54, compactEchoRole(describeEchoRole(echo)), echo.color);
     }
     const pos = echoPosition(echo, state.replayTime);
     if (pos) {
@@ -3319,14 +3576,15 @@ function echoHoldPosition(echo) {
 }
 
 function drawGhostBadge(x, y, label, color) {
+  const width = Math.max(36, Math.min(94, label.length * 12 + 20));
   ctx.save();
   ctx.globalAlpha = 1;
   ctx.shadowColor = color;
   ctx.shadowBlur = 12;
-  roundRect(x - 18, y - 10, 36, 20, 10, "rgba(17, 17, 53, 0.86)");
+  roundRect(x - width / 2, y - 10, width, 20, 10, "rgba(17, 17, 53, 0.86)");
   ctx.strokeStyle = color;
   ctx.lineWidth = 2;
-  roundedStroke(x - 18, y - 10, 36, 20, 10);
+  roundedStroke(x - width / 2, y - 10, width, 20, 10);
   ctx.fillStyle = "#ffffff";
   ctx.font = "1000 11px Inter, sans-serif";
   ctx.textAlign = "center";
@@ -3645,6 +3903,32 @@ function describeEchoRole(echo) {
   return `${room?.name ?? "방"} 루트`;
 }
 
+function compactEchoRole(role) {
+  if (!role) return "기록";
+  if (role.includes("레이저")) return "방패";
+  if (role.includes("중량")) return "중량";
+  if (role.includes("소형")) return "소형";
+  if (role.includes("유지")) return role.replace(" 유지", "");
+  if (role.includes("위상")) return "위상";
+  return "루트";
+}
+
+function echoEquipmentCopy(role) {
+  if (role.includes("레이저")) {
+    return { title: "방패 기록 장착", body: "빛 앞에 멈춘 실패가 다음 너를 지킨다." };
+  }
+  if (role.includes("유지")) {
+    return { title: `${compactEchoRole(role)} 스위치 장착`, body: "스위치를 맡은 실패가 열린 문을 붙잡는다." };
+  }
+  if (role.includes("중량")) {
+    return { title: "중량 기록 장착", body: "무거워진 실패가 눌러야 할 곳을 기억한다." };
+  }
+  if (role.includes("소형")) {
+    return { title: "소형 기록 장착", body: "작아진 실패가 좁은 길을 대신 맡는다." };
+  }
+  return { title: "루트 기록 장착", body: roomMemoryAnchor() };
+}
+
 function formatPrecise(seconds) {
   if (!Number.isFinite(seconds)) return "--";
   const m = Math.floor(seconds / 60);
@@ -3708,6 +3992,15 @@ function burst(x, y, color, count = 16) {
     const a = rand(0, Math.PI * 2);
     const s = rand(70, 210);
     particle(x, y, color, rand(2, 5), Math.cos(a) * s, Math.sin(a) * s, rand(0.25, 0.7), Math.random() > 0.55);
+  }
+}
+
+function sparkleEchoRoute(samples, color) {
+  if (!samples?.length) return;
+  const step = Math.max(1, Math.ceil(samples.length / 8));
+  for (let i = 0; i < samples.length; i += step) {
+    const sample = samples[i];
+    particle(sample.x, sample.y, color, rand(2, 4), rand(-18, 18), rand(-46, -14), rand(0.35, 0.8), Math.random() > 0.5);
   }
 }
 
@@ -3805,6 +4098,12 @@ continueButton.addEventListener("click", () => {
 tutorialButton.addEventListener("click", () => startGame(0));
 stageSelectButton.addEventListener("click", showStageSelect);
 stageBackButton.addEventListener("click", showMenu);
+stageRouteTabs?.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-stage-filter]");
+  if (!button) return;
+  state.stageFilter = button.dataset.stageFilter;
+  renderStageSelect();
+});
 stageGrid.addEventListener("click", (event) => {
   const button = event.target.closest("[data-stage]");
   if (!button || button.disabled) return;
@@ -3877,6 +4176,7 @@ if (window.__rewindRunnerAnimationId) {
 
 fitCanvasToCard();
 showMenu();
+warmupLoadingScreen();
 requestAnimationFrame(fitCanvasToCard);
 draw();
 animationId = requestAnimationFrame(loop);

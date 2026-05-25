@@ -45,6 +45,16 @@ You may not redistribute, resell, repackage, publish, or use the reserved game c
 
 Third-party packages and tools are distributed under their own licenses. See `package-lock.json` and the relevant package metadata for details.
 
+### Third-Party Font
+
+This project uses Galmuri11 by Minseo Lee for web typography.
+
+- License: SIL Open Font License 1.1
+- Source: https://noonnu.cc/en/font_page/801
+- Webfont package: https://cdn.jsdelivr.net/npm/galmuri@2.40.3/dist/galmuri.css
+
+The font may be used, studied, modified, and redistributed under the SIL Open Font License 1.1, provided the font itself is not sold by itself.
+
 ## 4. Contributions
 
 Unless agreed otherwise in writing, contributions to source code are provided under the MIT License, and contributions to game content or creative assets are provided under the reserved content terms above.

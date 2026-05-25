@@ -14,6 +14,23 @@
     <title>잔상탈출: 러너-07 | Afterimage Runner</title>
   </head>
   <body>
+    <section id="loadingOverlay" class="loading-overlay" aria-live="polite" aria-label="게임 로딩">
+      <div class="loading-panel">
+        <div class="loading-runner" aria-hidden="true">
+          <span class="loading-afterimage is-one"></span>
+          <span class="loading-afterimage is-two"></span>
+          <img src="/assets/player/sprites/hero-run.png" alt="" />
+          <i></i>
+        </div>
+        <p class="system-label">REWIND RUNNER SYSTEM / Archive-20</p>
+        <h1>러너-07 기동 중</h1>
+        <p id="loadingMessage">실패 로그를 복원하고 있습니다.</p>
+        <div class="loading-track" aria-hidden="true">
+          <span id="loadingBar"></span>
+        </div>
+        <small id="loadingPercent">0%</small>
+      </div>
+    </section>
     <div id="app" class="app-shell">
       <header class="topbar">
         <div class="brand">
@@ -94,8 +111,8 @@
             <div class="key-grid">
               <span><strong>WASD</strong> 이동</span>
               <span><strong>Space</strong> 대시/돌파</span>
-              <span><strong>R</strong> 현재 루프 기록</span>
-              <span><strong>E</strong> 고스트 싱크</span>
+              <span><strong>R</strong> 표시 지점 기록</span>
+              <span><strong>E</strong> 노란 선 싱크</span>
               <span><strong>Z</strong> 마지막 기록 삭제</span>
               <span><strong>Esc</strong> 일시정지</span>
             </div>
@@ -111,8 +128,8 @@
       <footer class="bottom-panel">
         <div class="control-chip"><span>이동</span> WASD / 방향키</div>
         <div class="control-chip"><span>대시</span> Space</div>
-        <div class="control-chip"><span>기록</span> R</div>
-        <div class="control-chip"><span>싱크</span> E</div>
+        <div class="control-chip"><span>기록</span> R 표시 지점</div>
+        <div class="control-chip"><span>싱크</span> E 노란 선</div>
         <div class="control-chip"><span>정리</span> Z 삭제 / Esc 정지</div>
         <div class="control-chip"><span>정지</span> P</div>
       </footer>
@@ -124,6 +141,21 @@
             <p class="system-label">REWIND RUNNER SYSTEM / Archive-20</p>
             <h1>잔상탈출: 러너-07</h1>
             <p>12방 공식 탈출. 20방 진짜 문. 실패한 움직임을 기록해 다음 루프의 스위치, 방패, 열쇠로 써라.</p>
+            <div class="menu-demo" aria-label="핵심 기믹 미리보기">
+              <div class="demo-lane">
+                <span class="demo-pad">A</span>
+                <span class="demo-gate"></span>
+                <span class="demo-door"></span>
+                <img class="demo-ghost" src="/assets/player/sprites/ghost-teal.png" alt="" />
+                <img class="demo-runner" src="/assets/player/sprites/hero-run.png" alt="" />
+                <span class="demo-route"></span>
+              </div>
+              <div class="demo-steps">
+                <span>R 기록</span>
+                <span>잔상 유지</span>
+                <span>현재 탈출</span>
+              </div>
+            </div>
           </div>
           <div class="menu-actions">
             <button id="continueButton" class="primary-button" type="button">시작하기</button>
@@ -143,6 +175,12 @@
         <div id="stagePanel" class="modal-panel stage-panel is-hidden">
           <p class="kicker">방 선택</p>
           <h1>공식 루트와 고급 방을 고르자.</h1>
+          <div id="stageRouteTabs" class="stage-route-tabs" aria-label="방 루트 필터">
+            <button class="is-active" data-stage-filter="all" type="button">전체</button>
+            <button data-stage-filter="official" type="button">공식 루트</button>
+            <button data-stage-filter="hidden" type="button">비인가 기록</button>
+            <button data-stage-filter="records" type="button">기록 경쟁</button>
+          </div>
           <div id="stageSummary" class="stage-summary"></div>
           <div id="stageGrid" class="stage-grid"></div>
           <div class="modal-actions">
@@ -173,6 +211,10 @@
           <p class="kicker" id="resultKicker">클리어</p>
           <h1 id="resultTitle">루프 브레이크</h1>
           <p id="resultBody">현재와 고스트가 함께 아카이브를 빠져나왔다.</p>
+          <div id="resultHero" class="result-hero" aria-hidden="true">
+            <img id="resultMascot" src="/assets/generated/runner-celebrate.png" alt="" />
+            <img id="resultBadge" src="/assets/generated/clear-badge.png" alt="" />
+          </div>
           <div id="finalStars" class="result-stars">☆☆☆</div>
           <div id="resultReplay" class="result-replay" aria-label="루프 합창 리플레이"></div>
           <div class="result-grid">
@@ -180,6 +222,7 @@
             <div><span>고스트</span><strong id="finalEchoes">0</strong></div>
             <div><span>기록</span><strong id="finalTime">00:00</strong></div>
           </div>
+          <div id="resultInsight" class="result-insight"></div>
           <div id="resultAdvice" class="result-advice"></div>
           <div class="result-actions">
             <button id="restartButton" class="ghost-button" type="button">다시 도전</button>
