@@ -72,6 +72,7 @@ const pauseButton = document.querySelector("#pauseButton");
 const resumeButton = document.querySelector("#resumeButton");
 const pauseRestartButton = document.querySelector("#pauseRestartButton");
 const pauseMenuButton = document.querySelector("#pauseMenuButton");
+const mobileControls = document.querySelector("#mobileControls");
 
 const W = 960;
 const H = 540;
@@ -88,6 +89,8 @@ const PHASE_SECONDS = 4.2;
 const JUDGE_CLEAR_INDEX = 11;
 const OFFICIAL_TARGET_SECONDS = 600;
 const keys = new Set();
+const movementKeys = new Set(["arrowleft", "arrowright", "arrowup", "arrowdown"]);
+const virtualPointerKeys = new Map();
 
 const INSTANCE_ID = Symbol("rewind-runner-instance");
 window.__rewindRunnerActiveInstance = INSTANCE_ID;
@@ -125,6 +128,56 @@ function focusGameCanvas() {
   } catch {
     canvas.focus();
   }
+}
+
+function markStageStartedByInput(key) {
+  if (state.screen !== "game") return;
+  if (["arrowleft", "arrowright", "arrowup", "arrowdown", " ", "r", "e"].includes(key)) {
+    state.stageStarted = true;
+  }
+}
+
+function handleInstantInput(key) {
+  if (state.screen === "stage-result") {
+    if (key === " " || key === "enter") startNextRoom();
+    else if (key === "r") startGame(state.roomIndex);
+    else if (key === "p") showMenu();
+    return;
+  }
+
+  markStageStartedByInput(key);
+
+  if (key === "p") {
+    if (state.screen === "game") pauseGame();
+    else if (state.screen === "paused") resumeGame();
+    return;
+  }
+  if (key === " ") queueDash();
+  if (key === "e") triggerSync();
+  if (key === "r" && state.screen === "game") restartLoop(true);
+  if (key === "z") undoGhost();
+}
+
+function pressVirtualKey(key, button, pointerId) {
+  if (!key) return;
+  focusGameCanvas();
+  button?.classList.add("is-held");
+  if (pointerId != null) virtualPointerKeys.set(pointerId, { key, button });
+  if (movementKeys.has(key)) {
+    markStageStartedByInput(key);
+    keys.add(key);
+    return;
+  }
+  handleInstantInput(key);
+}
+
+function releaseVirtualKey(key, button, pointerId) {
+  const active = pointerId != null ? virtualPointerKeys.get(pointerId) : null;
+  const resolvedKey = active?.key ?? key;
+  const resolvedButton = active?.button ?? button;
+  if (pointerId != null) virtualPointerKeys.delete(pointerId);
+  resolvedButton?.classList.remove("is-held");
+  if (resolvedKey && movementKeys.has(resolvedKey)) keys.delete(resolvedKey);
 }
 
 const spritePaths = {
@@ -4136,6 +4189,34 @@ pauseRestartButton.addEventListener("click", () => {
   focusGameCanvas();
 });
 pauseMenuButton.addEventListener("click", showMenu);
+
+if (mobileControls) {
+  mobileControls.addEventListener("contextmenu", (event) => event.preventDefault());
+  mobileControls.addEventListener("pointerdown", (event) => {
+    const button = event.target.closest("[data-virtual-key]");
+    if (!button) return;
+    event.preventDefault();
+    const key = button.dataset.virtualKey;
+    try {
+      button.setPointerCapture(event.pointerId);
+    } catch {
+      // Some embedded browsers do not expose capture for synthetic touch events.
+    }
+    pressVirtualKey(key, button, event.pointerId);
+  });
+  for (const eventName of ["pointerup", "pointercancel", "lostpointercapture"]) {
+    mobileControls.addEventListener(eventName, (event) => {
+      const button = event.target.closest("[data-virtual-key]");
+      const key = virtualPointerKeys.get(event.pointerId)?.key ?? button?.dataset.virtualKey;
+      releaseVirtualKey(key, button, event.pointerId);
+    });
+  }
+  mobileControls.addEventListener("pointerleave", (event) => {
+    const button = event.target.closest("[data-virtual-key]");
+    const key = virtualPointerKeys.get(event.pointerId)?.key ?? button?.dataset.virtualKey;
+    releaseVirtualKey(key, button, event.pointerId);
+  });
+}
 
 window.addEventListener("keydown", (event) => {
   const key = event.key.toLowerCase();
