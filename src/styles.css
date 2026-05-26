@@ -463,13 +463,13 @@ button:disabled {
 }
 
 .side-panel {
-  display: grid;
-  grid-template-rows: auto;
-  align-content: start;
+  display: flex;
+  flex-direction: column;
   gap: 6px;
   min-height: 0;
   padding: 10px;
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
   scrollbar-width: thin;
 }
 
@@ -485,9 +485,9 @@ button:disabled {
 
 .room-brief {
   position: relative;
-  display: grid;
-  align-content: start;
-  gap: 7px;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
   min-width: 0;
   min-height: 0;
   overflow: visible;
@@ -500,6 +500,7 @@ button:disabled {
 }
 
 .room-brief > * {
+  flex: 0 0 auto;
   min-width: 0;
   position: relative;
   z-index: 1;
@@ -610,16 +611,16 @@ button:disabled {
 
 .stage-rail {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(18px, 1fr));
+  grid-template-columns: repeat(10, minmax(0, 1fr));
   gap: 5px;
-  margin-top: 8px;
+  margin-top: 0;
 }
 
 .sync-checklist {
   display: flex;
   flex-wrap: wrap;
   gap: 5px;
-  margin-top: 8px;
+  margin-top: 0;
 }
 
 .sync-checklist span {
@@ -669,6 +670,7 @@ button:disabled {
 }
 
 .status-list {
+  flex: 0 0 auto;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   align-items: stretch;
@@ -728,6 +730,7 @@ button:disabled {
 .mission-card,
 .operator-card,
 .key-card {
+  flex: 0 0 auto;
   min-width: 0;
   border: 1px solid rgba(30, 220, 197, 0.28);
   border-radius: 8px;
@@ -831,6 +834,7 @@ button:disabled {
 }
 
 .echo-panel {
+  flex: 0 0 auto;
   min-height: 0;
   border: 1px solid rgba(72, 213, 228, 0.22);
   border-radius: 8px;
@@ -2725,7 +2729,8 @@ body.is-mobile-input .mobile-controls {
   }
 
   .side-panel {
-    grid-template-rows: auto;
+    display: flex;
+    flex-direction: column;
   }
 
   .slide-visual,
