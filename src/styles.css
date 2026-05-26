@@ -1096,8 +1096,10 @@ body.is-mobile-input .mobile-controls {
 .menu-hero {
   position: relative;
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 10px;
-  justify-items: start;
+  justify-items: stretch;
+  overflow: hidden;
   padding: 22px;
   border: 2px solid rgba(42, 22, 102, 0.32);
   border-radius: 8px;
@@ -1107,19 +1109,24 @@ body.is-mobile-input .mobile-controls {
 }
 
 .menu-hero::after {
-  display: none;
+  display: none !important;
+  content: none !important;
 }
 
 .menu-demo {
   position: relative;
   z-index: 1;
+  justify-self: stretch;
   display: grid;
   gap: 8px;
   width: 100%;
+  max-width: none;
+  inline-size: 100%;
+  min-width: 0;
   margin-top: 6px;
   border: 1px solid rgba(122, 77, 242, 0.2);
   border-radius: 8px;
-  padding: 10px;
+  padding: 12px;
   background:
     linear-gradient(135deg, rgba(30, 220, 197, 0.12), transparent 45%),
     linear-gradient(315deg, rgba(255, 91, 168, 0.1), transparent 55%),
@@ -1129,7 +1136,7 @@ body.is-mobile-input .mobile-controls {
 
 .demo-lane {
   position: relative;
-  min-height: 118px;
+  min-height: clamp(126px, 16vw, 158px);
   overflow: hidden;
   border: 1px solid rgba(42, 22, 102, 0.18);
   border-radius: 8px;
@@ -1141,9 +1148,9 @@ body.is-mobile-input .mobile-controls {
 
 .demo-route {
   position: absolute;
-  left: 6%;
-  right: 7%;
-  bottom: 24px;
+  left: 5%;
+  right: 4%;
+  bottom: 30px;
   height: 4px;
   border-radius: 999px;
   background: linear-gradient(90deg, var(--mint), var(--gold), var(--pink));
@@ -1160,8 +1167,8 @@ body.is-mobile-input .mobile-controls {
 }
 
 .demo-pad {
-  left: 19%;
-  bottom: 14px;
+  left: 15%;
+  bottom: 18px;
   display: grid;
   place-items: center;
   width: 90px;
@@ -1178,7 +1185,7 @@ body.is-mobile-input .mobile-controls {
 
 .demo-gate {
   left: 50%;
-  bottom: 8px;
+  bottom: 12px;
   width: 48px;
   height: 98px;
   border-radius: 0;
@@ -1188,8 +1195,8 @@ body.is-mobile-input .mobile-controls {
 }
 
 .demo-door {
-  right: 5%;
-  bottom: 11px;
+  right: 3%;
+  bottom: 15px;
   width: 82px;
   height: 92px;
   border: 0;
@@ -1203,7 +1210,7 @@ body.is-mobile-input .mobile-controls {
 .demo-ghost {
   position: absolute;
   z-index: 3;
-  bottom: 20px;
+  bottom: 24px;
   width: 64px;
   height: auto;
   filter: drop-shadow(0 7px 0 rgba(16, 9, 43, 0.18));
@@ -1215,7 +1222,7 @@ body.is-mobile-input .mobile-controls {
 }
 
 .demo-ghost {
-  left: 18.5%;
+  left: 14.5%;
   opacity: 0;
   filter:
     drop-shadow(0 0 14px rgba(30, 220, 197, 0.38))
@@ -1243,6 +1250,7 @@ body.is-mobile-input .mobile-controls {
 }
 
 .menu-logo {
+  justify-self: start;
   width: min(500px, 82%);
   height: auto;
   filter: drop-shadow(0 12px 0 rgba(16, 9, 43, 0.14));
@@ -1265,6 +1273,7 @@ body.is-mobile-input .mobile-controls {
 }
 
 .system-label {
+  justify-self: start;
   position: relative;
   z-index: 1;
   margin: 0;
@@ -1324,7 +1333,7 @@ body.is-mobile-input .mobile-controls {
   }
 
   33% {
-    left: 19%;
+    left: 15%;
     transform: translateY(0);
     opacity: 0.2;
   }
@@ -1336,13 +1345,13 @@ body.is-mobile-input .mobile-controls {
   }
 
   74% {
-    left: calc(100% - 148px);
+    left: calc(100% - 150px);
     transform: translateY(-2px);
     opacity: 1;
   }
 
   100% {
-    left: calc(100% - 100px);
+    left: calc(100% - 92px);
     transform: translateY(-2px);
     opacity: 0;
   }
@@ -2870,5 +2879,245 @@ body.is-mobile-input .mobile-controls {
     min-height: 34px;
     padding: 0 5px;
     font-size: 0.68rem;
+  }
+}
+
+/* Mobile controls v2: drag stick plus thumb-sized action controls. */
+body.is-mobile-input .app-shell {
+  padding-bottom: calc(clamp(142px, 25vw, 184px) + env(safe-area-inset-bottom));
+}
+
+body.is-mobile-input .mobile-controls {
+  left: 50%;
+  right: auto;
+  bottom: max(10px, env(safe-area-inset-bottom));
+  width: min(760px, calc(100vw - 18px));
+  transform: translateX(-50%);
+  grid-template-columns: clamp(132px, 30vw, 178px) minmax(0, 1fr);
+  align-items: end;
+  gap: clamp(8px, 2vw, 14px);
+}
+
+.mobile-dpad {
+  --stick-x: 0px;
+  --stick-y: 0px;
+  position: relative;
+  display: block;
+  width: clamp(132px, 30vw, 178px);
+  height: clamp(132px, 30vw, 178px);
+  padding: 0;
+  overflow: hidden;
+  border-radius: 999px;
+  touch-action: none;
+  user-select: none;
+}
+
+.mobile-dpad::before {
+  content: "";
+  position: absolute;
+  inset: 12px;
+  border: 1px solid rgba(30, 220, 197, 0.34);
+  border-radius: inherit;
+  background:
+    linear-gradient(90deg, transparent 47%, rgba(255, 255, 255, 0.16) 48% 52%, transparent 53%),
+    linear-gradient(0deg, transparent 47%, rgba(255, 255, 255, 0.16) 48% 52%, transparent 53%),
+    radial-gradient(circle at 50% 50%, rgba(30, 220, 197, 0.3), rgba(122, 77, 242, 0.08) 46%, transparent 68%);
+  box-shadow:
+    inset 0 0 28px rgba(30, 220, 197, 0.16),
+    0 0 22px rgba(30, 220, 197, 0.12);
+}
+
+.mobile-stick {
+  position: absolute;
+  z-index: 2;
+  left: 50%;
+  top: 50%;
+  width: clamp(44px, 10vw, 60px);
+  height: clamp(44px, 10vw, 60px);
+  border: 2px solid rgba(255, 255, 255, 0.5);
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at 35% 28%, rgba(255, 255, 255, 0.86), transparent 22%),
+    linear-gradient(180deg, rgba(30, 220, 197, 0.92), rgba(122, 77, 242, 0.9));
+  box-shadow:
+    0 8px 0 rgba(4, 2, 24, 0.34),
+    0 0 26px rgba(30, 220, 197, 0.42);
+  transform: translate(-50%, -50%) translate(var(--stick-x), var(--stick-y));
+  transition: transform 0.08s ease-out, box-shadow 0.12s ease-out;
+  pointer-events: none;
+}
+
+.mobile-dpad.is-held .mobile-stick {
+  box-shadow:
+    0 4px 0 rgba(4, 2, 24, 0.34),
+    0 0 34px rgba(255, 91, 168, 0.42);
+}
+
+.mobile-dpad .mobile-key {
+  position: absolute;
+  z-index: 1;
+  width: 42px;
+  min-width: 42px;
+  height: 42px;
+  min-height: 42px;
+  padding: 0;
+  border-radius: 999px;
+  opacity: 0.72;
+  pointer-events: none;
+  transform: none;
+  box-shadow: none;
+}
+
+.mobile-dpad .mobile-key:active,
+.mobile-dpad .mobile-key.is-held {
+  transform: none;
+}
+
+.mobile-up {
+  left: 50%;
+  top: 9px;
+  transform: translateX(-50%);
+}
+
+.mobile-left {
+  left: 9px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.mobile-down {
+  left: 50%;
+  bottom: 9px;
+  transform: translateX(-50%);
+}
+
+.mobile-right {
+  right: 9px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.mobile-actions {
+  grid-template-columns: minmax(70px, 1.25fr) minmax(70px, 1.25fr) repeat(2, minmax(54px, 0.8fr));
+  grid-auto-rows: minmax(46px, auto);
+  gap: 8px;
+  align-items: stretch;
+}
+
+.mobile-actions .mobile-key {
+  min-height: 46px;
+  border-radius: 12px;
+  touch-action: none;
+}
+
+.mobile-dash {
+  grid-column: 1 / span 2;
+  grid-row: 1 / span 2;
+  min-height: 100%;
+  font-size: 1.02rem;
+}
+
+.mobile-record {
+  grid-column: 3;
+  grid-row: 1;
+}
+
+.mobile-sync {
+  grid-column: 4;
+  grid-row: 1;
+}
+
+.mobile-delete {
+  grid-column: 3;
+  grid-row: 2;
+}
+
+.mobile-pause {
+  grid-column: 4;
+  grid-row: 2;
+}
+
+@media (max-width: 520px) {
+  body.is-mobile-input .app-shell {
+    padding-bottom: calc(150px + env(safe-area-inset-bottom));
+  }
+
+  body.is-mobile-input .mobile-controls {
+    grid-template-columns: 128px minmax(0, 1fr);
+    gap: 7px;
+  }
+
+  .mobile-dpad {
+    width: 128px;
+    height: 128px;
+  }
+
+  .mobile-stick {
+    width: 46px;
+    height: 46px;
+  }
+
+  .mobile-dpad .mobile-key {
+    width: 34px;
+    min-width: 34px;
+    height: 34px;
+    min-height: 34px;
+    font-size: 0.68rem;
+  }
+
+  .mobile-actions {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-auto-rows: 38px;
+    gap: 6px;
+  }
+
+  .mobile-dash {
+    grid-column: 1 / -1;
+    grid-row: 1;
+    min-height: 42px;
+  }
+
+  .mobile-record {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  .mobile-sync {
+    grid-column: 2;
+    grid-row: 2;
+  }
+
+  .mobile-delete {
+    grid-column: 3;
+    grid-row: 2;
+  }
+
+  .mobile-pause {
+    grid-column: 1 / -1;
+    grid-row: 3;
+  }
+}
+
+@media (max-height: 600px) and (orientation: landscape) {
+  body.is-mobile-input .app-shell {
+    padding-bottom: calc(118px + env(safe-area-inset-bottom));
+  }
+
+  body.is-mobile-input .mobile-controls {
+    width: min(680px, calc(100vw - 14px));
+    grid-template-columns: 118px minmax(0, 1fr);
+  }
+
+  .mobile-dpad {
+    width: 118px;
+    height: 118px;
+  }
+
+  .mobile-actions {
+    grid-auto-rows: 38px;
+  }
+
+  .mobile-dash {
+    font-size: 0.9rem;
   }
 }

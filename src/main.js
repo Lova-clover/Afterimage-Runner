@@ -91,6 +91,9 @@ const OFFICIAL_TARGET_SECONDS = 600;
 const keys = new Set();
 const movementKeys = new Set(["arrowleft", "arrowright", "arrowup", "arrowdown"]);
 const virtualPointerKeys = new Map();
+const virtualDirectionKeys = new Set();
+let activeDpadPointerId = null;
+let activeDpadElement = null;
 
 const INSTANCE_ID = Symbol("rewind-runner-instance");
 window.__rewindRunnerActiveInstance = INSTANCE_ID;
@@ -198,6 +201,70 @@ function releaseVirtualKey(key, button, pointerId) {
   if (pointerId != null) virtualPointerKeys.delete(pointerId);
   resolvedButton?.classList.remove("is-held");
   if (resolvedKey && movementKeys.has(resolvedKey)) keys.delete(resolvedKey);
+}
+
+function getVirtualDpadVector(dpad, clientX, clientY) {
+  const rect = dpad.getBoundingClientRect();
+  const centerX = rect.left + rect.width / 2;
+  const centerY = rect.top + rect.height / 2;
+  const maxRadius = Math.max(36, Math.min(rect.width, rect.height) * 0.38);
+  const dx = Math.max(-maxRadius, Math.min(maxRadius, clientX - centerX));
+  const dy = Math.max(-maxRadius, Math.min(maxRadius, clientY - centerY));
+  return { dx, dy, maxRadius };
+}
+
+function getVirtualDirections(dx, dy, maxRadius) {
+  const deadZone = Math.max(12, maxRadius * 0.28);
+  const directions = [];
+  if (Math.abs(dx) > deadZone) directions.push(dx < 0 ? "arrowleft" : "arrowright");
+  if (Math.abs(dy) > deadZone) directions.push(dy < 0 ? "arrowup" : "arrowdown");
+  return directions;
+}
+
+function setVirtualDirections(directions) {
+  const nextDirections = new Set(directions);
+  for (const key of virtualDirectionKeys) {
+    if (!nextDirections.has(key)) {
+      keys.delete(key);
+      virtualDirectionKeys.delete(key);
+    }
+  }
+  for (const key of nextDirections) {
+    if (!virtualDirectionKeys.has(key)) {
+      virtualDirectionKeys.add(key);
+      keys.add(key);
+    }
+  }
+  if (nextDirections.size > 0) markStageStartedByInput([...nextDirections][0]);
+}
+
+function updateVirtualDpad(dpad, clientX, clientY) {
+  const { dx, dy, maxRadius } = getVirtualDpadVector(dpad, clientX, clientY);
+  const directions = getVirtualDirections(dx, dy, maxRadius);
+  const active = directions.length > 0;
+  dpad.classList.toggle("is-held", active);
+  dpad.style.setProperty("--stick-x", active ? `${dx}px` : "0px");
+  dpad.style.setProperty("--stick-y", active ? `${dy}px` : "0px");
+  setVirtualDirections(directions);
+}
+
+function releaseVirtualDpad(dpad = activeDpadElement) {
+  activeDpadPointerId = null;
+  activeDpadElement = null;
+  if (dpad) {
+    dpad.classList.remove("is-held");
+    dpad.style.setProperty("--stick-x", "0px");
+    dpad.style.setProperty("--stick-y", "0px");
+  }
+  setVirtualDirections([]);
+}
+
+function clearVirtualInput() {
+  for (const { button } of virtualPointerKeys.values()) {
+    button?.classList.remove("is-held");
+  }
+  virtualPointerKeys.clear();
+  releaseVirtualDpad(activeDpadElement);
 }
 
 const spritePaths = {
@@ -1068,6 +1135,8 @@ function showPanel(panel) {
 
 function showMenu() {
   state.screen = "menu";
+  keys.clear();
+  clearVirtualInput();
   startOverlay.classList.add("is-visible");
   endOverlay.classList.remove("is-visible");
   pauseOverlay.classList.remove("is-visible");
@@ -1085,6 +1154,8 @@ function renderMenu() {
 function showIntro() {
   state.screen = "intro";
   state.introIndex = 0;
+  keys.clear();
+  clearVirtualInput();
   startOverlay.classList.add("is-visible");
   endOverlay.classList.remove("is-visible");
   pauseOverlay.classList.remove("is-visible");
@@ -1094,6 +1165,8 @@ function showIntro() {
 
 function showStageSelect() {
   state.screen = "stage-select";
+  keys.clear();
+  clearVirtualInput();
   startOverlay.classList.add("is-visible");
   endOverlay.classList.remove("is-visible");
   pauseOverlay.classList.remove("is-visible");
@@ -1208,6 +1281,7 @@ function startGame(index = 0, options = {}) {
   startRoom(index);
   lastTime = performance.now();
   keys.clear();
+  clearVirtualInput();
   startOverlay.classList.remove("is-visible");
   endOverlay.classList.remove("is-visible");
   pauseOverlay.classList.remove("is-visible");
@@ -1222,6 +1296,7 @@ function pauseGame() {
   state.screen = "paused";
   pauseOverlay.classList.add("is-visible");
   keys.clear();
+  clearVirtualInput();
   state.dashBuffer = 0;
   playSfx("pause");
 }
@@ -4213,10 +4288,35 @@ pauseMenuButton.addEventListener("click", showMenu);
 syncMobileInputMode();
 window.addEventListener("resize", syncMobileInputMode);
 window.addEventListener("orientationchange", syncMobileInputMode);
+window.addEventListener("blur", () => {
+  keys.clear();
+  clearVirtualInput();
+});
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) {
+    keys.clear();
+    clearVirtualInput();
+  }
+});
 
 if (mobileControls) {
   mobileControls.addEventListener("contextmenu", (event) => event.preventDefault());
   mobileControls.addEventListener("pointerdown", (event) => {
+    const dpad = event.target.closest(".mobile-dpad");
+    if (dpad) {
+      event.preventDefault();
+      focusGameCanvas();
+      activeDpadPointerId = event.pointerId;
+      activeDpadElement = dpad;
+      try {
+        dpad.setPointerCapture(event.pointerId);
+      } catch {
+        // Some embedded browsers do not expose capture for synthetic touch events.
+      }
+      updateVirtualDpad(dpad, event.clientX, event.clientY);
+      return;
+    }
+
     const button = event.target.closest("[data-virtual-key]");
     if (!button) return;
     event.preventDefault();
@@ -4228,14 +4328,24 @@ if (mobileControls) {
     }
     pressVirtualKey(key, button, event.pointerId);
   });
+  mobileControls.addEventListener("pointermove", (event) => {
+    if (activeDpadPointerId !== event.pointerId || !activeDpadElement) return;
+    event.preventDefault();
+    updateVirtualDpad(activeDpadElement, event.clientX, event.clientY);
+  });
   for (const eventName of ["pointerup", "pointercancel", "lostpointercapture"]) {
     mobileControls.addEventListener(eventName, (event) => {
+      if (activeDpadPointerId === event.pointerId) {
+        releaseVirtualDpad(activeDpadElement);
+        return;
+      }
       const button = event.target.closest("[data-virtual-key]");
       const key = virtualPointerKeys.get(event.pointerId)?.key ?? button?.dataset.virtualKey;
       releaseVirtualKey(key, button, event.pointerId);
     });
   }
   mobileControls.addEventListener("pointerleave", (event) => {
+    if (activeDpadPointerId === event.pointerId) return;
     const button = event.target.closest("[data-virtual-key]");
     const key = virtualPointerKeys.get(event.pointerId)?.key ?? button?.dataset.virtualKey;
     releaseVirtualKey(key, button, event.pointerId);
@@ -4245,19 +4355,43 @@ if (mobileControls) {
     mobileControls.addEventListener("touchstart", (event) => {
       const touch = event.changedTouches[0];
       const target = document.elementFromPoint(touch.clientX, touch.clientY);
+      const dpad = target?.closest?.(".mobile-dpad");
+      if (dpad) {
+        event.preventDefault();
+        activeDpadPointerId = touch.identifier;
+        activeDpadElement = dpad;
+        updateVirtualDpad(dpad, touch.clientX, touch.clientY);
+        return;
+      }
       const button = target?.closest?.("[data-virtual-key]");
       if (!button) return;
       event.preventDefault();
       pressVirtualKey(button.dataset.virtualKey, button, touch.identifier);
     }, { passive: false });
+    mobileControls.addEventListener("touchmove", (event) => {
+      for (const touch of event.changedTouches) {
+        if (activeDpadPointerId === touch.identifier && activeDpadElement) {
+          event.preventDefault();
+          updateVirtualDpad(activeDpadElement, touch.clientX, touch.clientY);
+        }
+      }
+    }, { passive: false });
     mobileControls.addEventListener("touchend", (event) => {
       for (const touch of event.changedTouches) {
+        if (activeDpadPointerId === touch.identifier) {
+          releaseVirtualDpad(activeDpadElement);
+          continue;
+        }
         const active = virtualPointerKeys.get(touch.identifier);
         releaseVirtualKey(active?.key, active?.button, touch.identifier);
       }
     });
     mobileControls.addEventListener("touchcancel", (event) => {
       for (const touch of event.changedTouches) {
+        if (activeDpadPointerId === touch.identifier) {
+          releaseVirtualDpad(activeDpadElement);
+          continue;
+        }
         const active = virtualPointerKeys.get(touch.identifier);
         releaseVirtualKey(active?.key, active?.button, touch.identifier);
       }
