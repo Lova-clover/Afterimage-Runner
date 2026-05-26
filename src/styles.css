@@ -911,6 +911,127 @@ button:disabled {
   display: none;
 }
 
+body.is-mobile-input .app-shell {
+  padding-bottom: calc(112px + env(safe-area-inset-bottom));
+}
+
+body.is-mobile-input .bottom-panel {
+  display: none;
+}
+
+body.is-mobile-input .mobile-controls {
+  position: fixed;
+  z-index: 12;
+  left: 10px;
+  right: 10px;
+  bottom: max(10px, env(safe-area-inset-bottom));
+  display: grid;
+  grid-template-columns: minmax(132px, 0.8fr) minmax(0, 1.2fr);
+  gap: 10px;
+  pointer-events: auto;
+}
+
+.mobile-dpad,
+.mobile-actions {
+  border: 1px solid rgba(30, 220, 197, 0.36);
+  border-radius: 8px;
+  padding: 8px;
+  background:
+    linear-gradient(135deg, rgba(30, 220, 197, 0.18), transparent 54%),
+    rgba(16, 9, 43, 0.84);
+  box-shadow:
+    0 16px 34px rgba(3, 2, 16, 0.32),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(10px);
+}
+
+.mobile-dpad {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 44px));
+  grid-template-rows: repeat(3, 40px);
+  justify-content: center;
+  align-content: center;
+  gap: 5px;
+}
+
+.mobile-actions {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.mobile-key {
+  min-width: 0;
+  min-height: 40px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 8px;
+  padding: 0 8px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(122, 77, 242, 0.2)),
+    rgba(22, 13, 61, 0.9);
+  color: #f7fbff;
+  font-size: 0.78rem;
+  font-weight: 1000;
+  text-align: center;
+  touch-action: none;
+  user-select: none;
+  box-shadow:
+    0 5px 0 rgba(4, 2, 24, 0.34),
+    0 12px 22px rgba(3, 2, 16, 0.22);
+}
+
+.mobile-key.is-held,
+.mobile-key:active {
+  border-color: rgba(30, 220, 197, 0.72);
+  background:
+    linear-gradient(180deg, rgba(30, 220, 197, 0.38), rgba(122, 77, 242, 0.26)),
+    rgba(22, 13, 61, 0.96);
+  transform: translateY(2px);
+  box-shadow:
+    0 2px 0 rgba(4, 2, 24, 0.34),
+    0 10px 18px rgba(30, 220, 197, 0.18);
+}
+
+.mobile-up {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.mobile-left {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.mobile-down {
+  grid-column: 2;
+  grid-row: 2;
+}
+
+.mobile-right {
+  grid-column: 3;
+  grid-row: 2;
+}
+
+.mobile-dash {
+  background:
+    linear-gradient(180deg, #ff72ba, #f04499);
+}
+
+.mobile-record {
+  border-color: rgba(255, 209, 102, 0.52);
+  color: #fff4c9;
+}
+
+.mobile-sync {
+  border-color: rgba(30, 220, 197, 0.52);
+  color: #abfff8;
+}
+
+.mobile-delete {
+  border-color: rgba(255, 91, 168, 0.52);
+  color: #ffd2e8;
+}
+
 .modal {
   position: fixed;
   inset: 0;

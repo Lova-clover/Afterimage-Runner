@@ -130,7 +130,25 @@ function focusGameCanvas() {
   }
 }
 
+function normalizeInputKey(key) {
+  if (!key) return "";
+  const normalized = String(key).toLowerCase();
+  if (normalized === "space" || normalized === "spacebar") return " ";
+  return normalized;
+}
+
+function isMobileInputDevice() {
+  const coarsePointer = window.matchMedia?.("(pointer: coarse)")?.matches ?? false;
+  const noHover = window.matchMedia?.("(hover: none)")?.matches ?? false;
+  return coarsePointer || noHover || navigator.maxTouchPoints > 0 || window.innerWidth <= 920;
+}
+
+function syncMobileInputMode() {
+  document.body.classList.toggle("is-mobile-input", isMobileInputDevice());
+}
+
 function markStageStartedByInput(key) {
+  key = normalizeInputKey(key);
   if (state.screen !== "game") return;
   if (["arrowleft", "arrowright", "arrowup", "arrowdown", " ", "r", "e"].includes(key)) {
     state.stageStarted = true;
@@ -138,6 +156,7 @@ function markStageStartedByInput(key) {
 }
 
 function handleInstantInput(key) {
+  key = normalizeInputKey(key);
   if (state.screen === "stage-result") {
     if (key === " " || key === "enter") startNextRoom();
     else if (key === "r") startGame(state.roomIndex);
@@ -159,6 +178,7 @@ function handleInstantInput(key) {
 }
 
 function pressVirtualKey(key, button, pointerId) {
+  key = normalizeInputKey(key);
   if (!key) return;
   focusGameCanvas();
   button?.classList.add("is-held");
@@ -173,7 +193,7 @@ function pressVirtualKey(key, button, pointerId) {
 
 function releaseVirtualKey(key, button, pointerId) {
   const active = pointerId != null ? virtualPointerKeys.get(pointerId) : null;
-  const resolvedKey = active?.key ?? key;
+  const resolvedKey = normalizeInputKey(active?.key ?? key);
   const resolvedButton = active?.button ?? button;
   if (pointerId != null) virtualPointerKeys.delete(pointerId);
   resolvedButton?.classList.remove("is-held");
@@ -4190,6 +4210,10 @@ pauseRestartButton.addEventListener("click", () => {
 });
 pauseMenuButton.addEventListener("click", showMenu);
 
+syncMobileInputMode();
+window.addEventListener("resize", syncMobileInputMode);
+window.addEventListener("orientationchange", syncMobileInputMode);
+
 if (mobileControls) {
   mobileControls.addEventListener("contextmenu", (event) => event.preventDefault());
   mobileControls.addEventListener("pointerdown", (event) => {
@@ -4216,6 +4240,29 @@ if (mobileControls) {
     const key = virtualPointerKeys.get(event.pointerId)?.key ?? button?.dataset.virtualKey;
     releaseVirtualKey(key, button, event.pointerId);
   });
+
+  if (!window.PointerEvent) {
+    mobileControls.addEventListener("touchstart", (event) => {
+      const touch = event.changedTouches[0];
+      const target = document.elementFromPoint(touch.clientX, touch.clientY);
+      const button = target?.closest?.("[data-virtual-key]");
+      if (!button) return;
+      event.preventDefault();
+      pressVirtualKey(button.dataset.virtualKey, button, touch.identifier);
+    }, { passive: false });
+    mobileControls.addEventListener("touchend", (event) => {
+      for (const touch of event.changedTouches) {
+        const active = virtualPointerKeys.get(touch.identifier);
+        releaseVirtualKey(active?.key, active?.button, touch.identifier);
+      }
+    });
+    mobileControls.addEventListener("touchcancel", (event) => {
+      for (const touch of event.changedTouches) {
+        const active = virtualPointerKeys.get(touch.identifier);
+        releaseVirtualKey(active?.key, active?.button, touch.identifier);
+      }
+    });
+  }
 }
 
 window.addEventListener("keydown", (event) => {
