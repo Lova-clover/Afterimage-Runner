@@ -496,7 +496,7 @@ button:disabled {
   flex: 0 0 auto;
   min-width: 0;
   min-height: max-content;
-  overflow: hidden;
+  overflow: visible;
   border: 1px solid rgba(122, 77, 242, 0.18);
   border-radius: 8px;
   padding: 10px 11px;
@@ -526,6 +526,7 @@ button:disabled {
     linear-gradient(180deg, rgba(255, 91, 168, 0.1), rgba(30, 220, 197, 0.08));
   transform: rotate(-8deg);
   content: "";
+  pointer-events: none;
 }
 
 .room-brief .kicker,
@@ -1912,7 +1913,8 @@ body.is-mobile-input .mobile-controls {
 .result {
   position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 1.28fr) minmax(240px, 0.62fr);
+  grid-template-columns: minmax(0, 1.08fr) minmax(260px, 0.54fr);
+  align-items: stretch;
   gap: 12px 16px;
   width: min(1180px, calc(100vw - 24px));
   max-height: calc(100dvh - 32px);
@@ -1960,11 +1962,11 @@ body.is-mobile-input .mobile-controls {
 
 .result-hero {
   grid-column: 2;
-  grid-row: 1 / span 4;
-  align-self: start;
+  grid-row: 1 / span 5;
+  align-self: stretch;
   display: grid;
   place-items: center;
-  min-height: 236px;
+  min-height: min(360px, 42vh);
   border: 1px solid rgba(30, 220, 197, 0.26);
   border-radius: 8px;
   background:

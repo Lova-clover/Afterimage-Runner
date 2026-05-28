@@ -163,8 +163,8 @@ function handleInstantInput(key) {
   key = normalizeInputKey(key);
   if (state.screen === "stage-result") {
     if (key === " " || key === "enter") startNextRoom();
-    else if (key === "r") startGame(state.roomIndex);
-    else if (key === "p") showMenu();
+    else if (key === "r") restartCurrentChallenge();
+    else if (key === "p" || key === "m" || key === "escape") showMenu();
     return;
   }
 
@@ -1039,6 +1039,7 @@ const state = {
   crashTimer: 0,
   crashInfo: null,
   failureCount: 0,
+  hazardPositions: new Map(),
   brokenDashGates: new Set(),
   hintCooldown: 0,
   roomIntroTimer: 0,
@@ -1384,9 +1385,10 @@ function startRoom(index) {
   state.crashTimer = 0;
   state.crashInfo = null;
   state.failureCount = 0;
+  state.hazardPositions = new Map();
   state.hintCooldown = 0;
-  state.roomIntroTimer = 2.3;
-  state.roomIntroShown = true;
+  state.roomIntroTimer = roomIntroDuration(index);
+  state.roomIntroShown = state.roomIntroTimer > 0;
   state.doorWasOpen = false;
   state.syncWasShown = false;
   state.dashCharge = false;
@@ -1422,6 +1424,25 @@ function isTutorialRoom() {
 
 function hasCanvasGuidance() {
   return state.roomIndex < CANVAS_GUIDE_ROOMS;
+}
+
+function roomIntroDuration(index = state.roomIndex) {
+  if (state.endlessActive) return 1.15;
+  if (index === 0) return 2.1;
+  return 0;
+}
+
+function hasCanvasAssistHud() {
+  return (
+    hasCanvasGuidance()
+    || state.endlessActive
+    || state.echoes.length > 0
+    || state.itemMode !== "normal"
+    || state.dashCharge
+    || state.syncRush > 0.02
+    || state.phaseTimer > 0.02
+    || state.crashTimer > 0
+  );
 }
 
 function restartLoop(saveEcho = true, reason = "RECORD") {
@@ -1464,6 +1485,7 @@ function restartLoop(saveEcho = true, reason = "RECORD") {
   }
   const room = rooms[state.roomIndex];
   state.replayTime = 0;
+  state.hazardPositions = new Map();
   state.loopNumber += 1;
   const loopLimit = currentLoopLimit(room);
   if (loopLimit && state.loopNumber > loopLimit) {
@@ -2165,7 +2187,7 @@ function updateObjects(dt) {
       return;
     }
   }
-  if (updateHazards()) return;
+  if (updateHazards(dt)) return;
   if (checkParadoxRisk()) return;
 
   for (const gate of room.sizeGates ?? []) {
@@ -2543,9 +2565,48 @@ function getMissionState() {
   return { title: "다음 루프", signal: "이번 루프가 맡을 일을 정하자.", target: nextCore ?? exit, steps: ["역할 정하기", "R 기록", "겹치기"] };
 }
 
+function sealedWallRect(rect) {
+  const arena = { left: 54, top: 54, right: W - 54, bottom: H - 54 };
+  const nearEdge = 42;
+  const isVertical = rect.h > rect.w * 1.45;
+  const isHorizontal = rect.w > rect.h * 1.45;
+
+  if (isVertical) {
+    let y = rect.y;
+    let h = rect.h;
+    if (rect.y <= arena.top + nearEdge) {
+      h += rect.y - arena.top;
+      y = arena.top;
+    }
+    if (rect.y + rect.h >= arena.bottom - nearEdge) {
+      h = arena.bottom - y;
+    }
+    return { ...rect, y, h };
+  }
+
+  if (isHorizontal) {
+    let x = rect.x;
+    let w = rect.w;
+    if (rect.x <= arena.left + nearEdge) {
+      w += rect.x - arena.left;
+      x = arena.left;
+    }
+    if (rect.x + rect.w >= arena.right - nearEdge) {
+      w = arena.right - x;
+    }
+    return { ...rect, x, w };
+  }
+
+  return rect;
+}
+
+function wallRects(room) {
+  return (room.walls ?? []).map(sealedWallRect);
+}
+
 function solidRects(room) {
   return [
-    ...room.walls,
+    ...wallRects(room),
     ...room.gates.filter((gate) => !gateOpen(gate)),
     ...(room.sizeGates ?? []).filter((gate) => !sizeGateOpen(gate)),
     ...(room.phaseGates ?? []).filter((gate) => !phaseGateOpen(gate)),
@@ -2622,25 +2683,78 @@ function activeHazards() {
     hazards.push({ type: "spike", id: "lane-spike-b", x: 585, y: 318, w: 82, h: 28, phase: state.roomIndex * 0.31, motion: { axis: "x", amplitude: 22, speed: 1.2 } });
   }
   if (state.roomIndex >= 12) {
-    hazards.push({ type: "sentry", id: "archive-sentry", x: 486, y: 108, range: 150, radius: 34, speed: 1.1, phase: 0.8 });
+    hazards.push({ type: "sentry", id: "archive-sentry", x: 486, y: 108, range: 230, radius: 30, speed: 1.35, phase: 0.8, idleAmplitude: 20 });
   }
   if (state.endlessActive) {
     hazards.push(
       { type: "spike", id: "tower-spike", x: 430 + (floor % 3) * 70, y: floor % 2 ? 188 : 352, w: 78, h: 28, motion: { axis: "y", amplitude: clamp(16 + floor, 18, 52), speed: 1.25 + floor * 0.025, phase: floor } },
-      { type: "sentry", id: "tower-sentry", x: 610, y: 150 + (floor % 4) * 70, range: clamp(130 + floor * 3, 150, 270), radius: 30, speed: 1.25 + floor * 0.02, phase: floor * 0.35 },
+      { type: "sentry", id: "tower-sentry", x: 610, y: 150 + (floor % 4) * 70, range: clamp(190 + floor * 4, 210, 320), radius: 30, speed: 1.45 + floor * 0.02, phase: floor * 0.35, idleAmplitude: 26 },
     );
   }
   return hazards;
 }
 
-function hazardRuntime(hazard) {
+function hazardIdentity(hazard) {
+  const scope = state.endlessActive ? `tower:${state.endlessFloor}` : `room:${state.roomIndex}`;
+  return `${scope}:${hazard.id}`;
+}
+
+function hazardMotionRuntime(hazard) {
   const motion = hazard.motion;
-  if (!motion) return hazard;
+  if (!motion) return { ...hazard };
   const amount = Math.sin(state.replayTime * (motion.speed ?? 1) + (motion.phase ?? 0)) * (motion.amplitude ?? 0);
   return {
     ...hazard,
     x: hazard.x + (motion.axis === "x" ? amount : 0),
     y: hazard.y + (motion.axis === "y" ? amount : 0),
+  };
+}
+
+function hazardRuntime(hazard, dt = 0) {
+  const base = hazardMotionRuntime(hazard);
+  if (base.type !== "sentry") return base;
+
+  const key = hazardIdentity(base);
+  let pos = state.hazardPositions.get(key);
+  if (!pos) {
+    pos = { x: base.x, y: base.y, targetType: null, alert: 0, facingX: 1 };
+    state.hazardPositions.set(key, pos);
+  }
+
+  if (dt > 0) {
+    const current = { ...base, x: pos.x, y: pos.y };
+    const target = nearestSentryTarget(current);
+    const idleAmplitude = base.idleAmplitude ?? 18;
+    const idleX = base.x + Math.sin(state.replayTime * (base.idleSpeed ?? 0.85) + (base.phase ?? 0)) * idleAmplitude;
+    const idleY = base.y + Math.cos(state.replayTime * (base.idleSpeed ?? 0.72) + (base.phase ?? 0.6)) * (idleAmplitude * 0.62);
+    const targetX = target ? target.x : idleX;
+    const targetY = target ? target.y : idleY;
+    const speed = (base.speed ?? 1.1) * (target?.type === "echo" ? 82 : 96);
+    const dx = targetX - pos.x;
+    const dy = targetY - pos.y;
+    const dist = Math.hypot(dx, dy);
+    const step = Math.min(dist, speed * dt);
+
+    if (dist > 0.01) {
+      pos.x += (dx / dist) * step;
+      pos.y += (dy / dist) * step;
+      pos.facingX = dx < 0 ? -1 : 1;
+    }
+
+    pos.x = clamp(pos.x, 76, W - 76);
+    pos.y = clamp(pos.y, 76, H - 76);
+    pos.targetType = target?.type ?? null;
+    pos.alert = target ? 1 : Math.max(0, (pos.alert ?? 0) - dt * 2);
+    state.hazardPositions.set(key, pos);
+  }
+
+  return {
+    ...base,
+    x: pos.x,
+    y: pos.y,
+    targetType: pos.targetType,
+    alert: pos.alert ?? 0,
+    facingX: pos.facingX ?? 1,
   };
 }
 
@@ -2656,9 +2770,9 @@ function nearestSentryTarget(hazard) {
     .sort((a, b) => a.distance - b.distance)[0] ?? null;
 }
 
-function updateHazards() {
+function updateHazards(dt = 0) {
   for (const rawHazard of activeHazards()) {
-    const hazard = hazardRuntime(rawHazard);
+    const hazard = hazardRuntime(rawHazard, dt);
     if (hazard.type === "spike") {
       if (circleRectOverlap(state.player, playerRadius() + 3, hazard)) {
         triggerCrash("가시 함정", "대시로 넘거나 잔상에게 길을 먼저 맡겨라.");
@@ -2668,10 +2782,13 @@ function updateHazards() {
     }
     if (hazard.type === "sentry") {
       const target = nearestSentryTarget(hazard);
-      if (!target) continue;
-      if (target.type === "player" && target.distance <= (hazard.radius ?? 32)) {
+      if (distance(state.player, hazard) <= (hazard.radius ?? 32)) {
         triggerCrash("추적 장치", "고스트가 먼저 시야를 끌게 만들어라.");
         return true;
+      }
+      if (target?.type === "echo" && target.distance <= (hazard.radius ?? 32) + 12) {
+        if (state.hintCooldown <= 0) showContextHint("고스트 유인", "추적 장치가 잔상을 쫓고 있다.");
+        continue;
       }
     }
   }
@@ -2934,8 +3051,8 @@ function draw() {
     const power = state.screenShake * 18;
     ctx.translate(rand(-power, power), rand(-power, power));
   }
-    drawRoom();
-    if (state.player && (state.screen === "game" || state.screen === "paused" || state.screen === "stage-result")) {
+  drawRoom();
+  if (state.player && (state.screen === "game" || state.screen === "paused" || state.screen === "stage-result")) {
     drawGuidePath();
     drawBestGhost();
     drawEchoes();
@@ -2948,8 +3065,10 @@ function draw() {
     drawFloatingText();
     drawCrashHint();
     drawTimeline();
-    drawModeBadge();
-    drawAfterimageStatus();
+    if (hasCanvasAssistHud()) {
+      drawModeBadge();
+      drawAfterimageStatus();
+    }
     drawFlowBadge();
     drawRoomIntroOverlay();
   }
@@ -3109,7 +3228,7 @@ function drawRoom() {
 
   drawArchiveZoneMarker(room, palette);
 
-  for (const wall of room.walls) drawWallBarrier(wall);
+  for (const wall of wallRects(room)) drawWallBarrier(wall);
 }
 
 function drawArchiveZoneMarker(room, palette) {
@@ -3194,9 +3313,11 @@ function drawObjectivePointer() {
 
 function drawRoomIntroOverlay() {
   if (state.roomIntroTimer <= 0) return;
+  if (!hasCanvasGuidance() && !state.endlessActive) return;
   const room = rooms[state.roomIndex];
-  const alpha = clamp(state.roomIntroTimer / 2.3, 0, 1);
-  const overlayW = 500;
+  const duration = roomIntroDuration();
+  const alpha = clamp(state.roomIntroTimer / Math.max(0.1, duration), 0, 1);
+  const overlayW = state.endlessActive ? 380 : 500;
   const overlayX = (W - overlayW) / 2;
   const overlayY = 8;
   ctx.save();
@@ -3424,22 +3545,41 @@ function drawHazards() {
     }
     if (hazard.type === "sentry") {
       const target = nearestSentryTarget(hazard);
+      const color = target?.type === "echo" ? target.color : "#ff5ba8";
+      const sprite = target?.type === "echo" ? "ghost-teal" : state.endlessActive ? "ghost-purple" : "ghost-pink";
+      ctx.save();
+      ctx.globalAlpha = target ? 0.15 : 0.08;
+      ctx.strokeStyle = color;
+      ctx.shadowColor = color;
+      ctx.shadowBlur = 12;
+      ctx.lineWidth = 2;
+      ctx.setLineDash([10, 12]);
+      ctx.beginPath();
+      ctx.arc(hazard.x, hazard.y, hazard.range ?? 160, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+
       ctx.save();
       ctx.translate(hazard.x, hazard.y);
-      ctx.shadowColor = "#ff5ba8";
-      ctx.shadowBlur = 18;
-      ctx.fillStyle = "rgba(16, 9, 43, 0.78)";
-      ctx.strokeStyle = target?.type === "echo" ? target.color : "rgba(255, 91, 168, 0.9)";
+      ctx.shadowColor = color;
+      ctx.shadowBlur = target ? 24 : 16;
+      if (!drawSprite(sprite, 0, 0, 62, 62, { alpha: target ? 0.98 : 0.88, flipX: hazard.facingX < 0 })) {
+        ctx.fillStyle = "rgba(16, 9, 43, 0.78)";
+        ctx.beginPath();
+        ctx.arc(0, 0, 22, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.strokeStyle = color;
       ctx.lineWidth = 3;
       ctx.beginPath();
-      ctx.arc(0, 0, 22, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.arc(0, 0, hazard.radius ?? 30, 0, Math.PI * 2);
       ctx.stroke();
-      ctx.fillStyle = target?.type === "echo" ? target.color : "#ff5ba8";
+      ctx.fillStyle = color;
       ctx.beginPath();
-      ctx.arc(0, 0, 8, 0, Math.PI * 2);
+      ctx.arc((hazard.facingX ?? 1) * 18, -16, target ? 5 : 3.5, 0, Math.PI * 2);
       ctx.fill();
       ctx.restore();
+
       if (target) {
         ctx.save();
         ctx.globalAlpha = target.type === "echo" ? 0.45 : 0.72;
@@ -3784,6 +3924,25 @@ function switchColor(id) {
   return "#1edcc5";
 }
 
+function drawLaserEmitterCap(localX, active, flip = false) {
+  const color = active ? "#ff4f8f" : "#1edcc5";
+  ctx.save();
+  ctx.translate(localX, 0);
+  if (flip) ctx.scale(-1, 1);
+  ctx.shadowColor = color;
+  ctx.shadowBlur = active ? 18 : 10;
+  roundRect(-13, -31, 26, 62, 9, "rgba(16, 9, 43, 0.9)");
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.62)";
+  ctx.lineWidth = 1.5;
+  roundedStroke(-13, -31, 26, 62, 9);
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 3;
+  roundedStroke(-10, -27, 20, 54, 7);
+  ctx.fillStyle = color;
+  roundRect(-4, -20, 8, 40, 4, color);
+  ctx.restore();
+}
+
 function drawLaserBeam(laser, on, blocker = null) {
   laser = laserRuntime(laser);
   const dx = laser.x2 - laser.x1;
@@ -3804,8 +3963,10 @@ function drawLaserBeam(laser, on, blocker = null) {
   ctx.save();
   ctx.translate((laser.x1 + laser.x2) / 2, (laser.y1 + laser.y2) / 2);
   ctx.rotate(angle);
-  drawSprite(on || blocked ? "traffic-red" : "traffic-green", -len / 2, 0, 30, 42, { alpha: on || blocked ? 0.96 : 0.72 });
-  drawSprite(on || blocked ? "traffic-red" : "traffic-green", len / 2, 0, 30, 42, { alpha: on || blocked ? 0.96 : 0.72, flipX: true });
+  drawLaserEmitterCap(-len / 2, on || blocked);
+  drawLaserEmitterCap(len / 2, on || blocked, true);
+  drawSprite(on || blocked ? "traffic-red" : "traffic-green", -len / 2, 0, 38, 54, { alpha: on || blocked ? 0.72 : 0.5 });
+  drawSprite(on || blocked ? "traffic-red" : "traffic-green", len / 2, 0, 38, 54, { alpha: on || blocked ? 0.72 : 0.5, flipX: true });
   if (on || blocked) {
     ctx.save();
     ctx.globalAlpha = 0.68;
@@ -4587,6 +4748,14 @@ function startNextRoom() {
   startGame(loopToStart ? 0 : next, { preserveCampaign });
 }
 
+function restartCurrentChallenge() {
+  if (state.endlessActive) {
+    startEndlessFloor(Math.max(1, state.endlessFloor));
+    return;
+  }
+  startGame(state.roomIndex);
+}
+
 function loop(now) {
   if (window.__rewindRunnerActiveInstance !== INSTANCE_ID) return;
   const dt = Math.min(0.033, (now - lastTime) / 1000 || 0);
@@ -4625,7 +4794,7 @@ stageGrid.addEventListener("click", (event) => {
 });
 startButton.addEventListener("click", advanceIntro);
 introBackButton.addEventListener("click", retreatIntro);
-restartButton.addEventListener("click", () => startGame(state.roomIndex));
+restartButton.addEventListener("click", restartCurrentChallenge);
 nextButton.addEventListener("click", () => {
   startNextRoom();
 });
@@ -4764,7 +4933,7 @@ window.addEventListener("keydown", (event) => {
   }
   if (state.screen === "stage-result" && !event.repeat) {
     if (key === "enter" || key === " ") startNextRoom();
-    else if (key === "r") startGame(state.roomIndex);
+    else if (key === "r") restartCurrentChallenge();
     else if (key === "m" || key === "escape") showMenu();
     return;
   }
