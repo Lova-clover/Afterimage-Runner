@@ -473,6 +473,11 @@ button:disabled {
   scrollbar-width: thin;
 }
 
+.side-panel > * {
+  flex-shrink: 0;
+  min-width: 0;
+}
+
 .side-panel::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -488,9 +493,10 @@ button:disabled {
   display: flex;
   flex-direction: column;
   gap: 9px;
+  flex: 0 0 auto;
   min-width: 0;
-  min-height: 0;
-  overflow: visible;
+  min-height: max-content;
+  overflow: hidden;
   border: 1px solid rgba(122, 77, 242, 0.18);
   border-radius: 8px;
   padding: 10px 11px;
@@ -510,8 +516,8 @@ button:disabled {
   position: absolute;
   opacity: 0.28;
   top: 18px;
-  right: -34px;
-  width: 150px;
+  right: 8px;
+  width: min(150px, 38%);
   height: 84px;
   border: 1px solid rgba(122, 77, 242, 0.16);
   border-radius: 8px;
@@ -1305,7 +1311,7 @@ body.is-mobile-input .mobile-controls {
 
 .menu-actions {
   display: grid;
-  grid-template-columns: minmax(210px, 1.35fr) repeat(2, minmax(150px, 0.8fr));
+  grid-template-columns: minmax(210px, 1.35fr) repeat(3, minmax(132px, 0.8fr));
   gap: 12px;
 }
 
@@ -1906,9 +1912,9 @@ body.is-mobile-input .mobile-controls {
 .result {
   position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 0.95fr) minmax(320px, 1fr);
-  gap: 12px 18px;
-  width: min(1080px, calc(100vw - 32px));
+  grid-template-columns: minmax(0, 1.28fr) minmax(240px, 0.62fr);
+  gap: 12px 16px;
+  width: min(1180px, calc(100vw - 24px));
   max-height: calc(100dvh - 32px);
   overflow: auto;
   scrollbar-gutter: stable;
@@ -1958,7 +1964,7 @@ body.is-mobile-input .mobile-controls {
   align-self: start;
   display: grid;
   place-items: center;
-  min-height: 260px;
+  min-height: 236px;
   border: 1px solid rgba(30, 220, 197, 0.26);
   border-radius: 8px;
   background:
@@ -1968,20 +1974,20 @@ body.is-mobile-input .mobile-controls {
 }
 
 .result-hero img {
-  max-width: min(82%, 210px);
+  max-width: min(86%, 190px);
   height: auto;
   filter: drop-shadow(0 18px 18px rgba(16, 9, 43, 0.18));
 }
 
 #resultMascot {
   align-self: end;
-  max-height: 166px;
+  max-height: 150px;
   object-fit: contain;
 }
 
 #resultBadge {
   align-self: start;
-  max-height: 92px;
+  max-height: 82px;
   margin-top: -12px;
 }
 
@@ -3124,5 +3130,90 @@ body.is-mobile-input .mobile-controls {
 
   .mobile-dash {
     font-size: 0.9rem;
+  }
+}
+
+/* Keep touch controls in the document flow so they do not cover the room text. */
+body.is-mobile-input .app-shell {
+  padding-bottom: max(16px, env(safe-area-inset-bottom));
+}
+
+body.is-mobile-input .mobile-controls {
+  position: static;
+  grid-column: 1 / -1;
+  z-index: 8;
+  left: auto;
+  right: auto;
+  bottom: auto;
+  width: min(760px, 100%);
+  margin: -2px auto 4px;
+  transform: none;
+}
+
+/* Zoom guard: once browser zoom or a compact window starts squeezing the HUD,
+   stack the play area so cards keep their natural height instead of colliding. */
+@media (min-width: 981px) and (max-width: 1320px), (min-width: 981px) and (max-height: 740px) {
+  body {
+    overflow: auto;
+  }
+
+  .app-shell {
+    height: auto;
+    min-height: 100dvh;
+  }
+
+  .topbar {
+    grid-template-columns: minmax(190px, 240px) minmax(0, 1fr) auto;
+  }
+
+  .hud-grid {
+    grid-template-columns: repeat(3, minmax(84px, 1fr)) minmax(150px, 1.2fr);
+  }
+
+  .hud-card:nth-child(4) {
+    display: none;
+  }
+
+  .play-layout {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .canvas-card {
+    min-height: min(62vw, 620px);
+  }
+
+  .side-panel {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: start;
+    gap: 8px;
+    max-height: none;
+    overflow: visible;
+  }
+
+  .room-brief,
+  .status-list,
+  .key-card,
+  .echo-panel {
+    grid-column: 1 / -1;
+  }
+
+  .room-brief {
+    min-height: max-content;
+    gap: 8px;
+  }
+
+  .status-list {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .mission-card,
+  .operator-card {
+    min-height: 0;
+  }
+
+  .bottom-panel {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }

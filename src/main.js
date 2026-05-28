@@ -41,6 +41,7 @@ const introPanel = document.querySelector("#introPanel");
 const continueButton = document.querySelector("#continueButton");
 const tutorialButton = document.querySelector("#tutorialButton");
 const stageSelectButton = document.querySelector("#stageSelectButton");
+const endlessButton = document.querySelector("#endlessButton");
 const stageBackButton = document.querySelector("#stageBackButton");
 const stageRouteTabs = document.querySelector("#stageRouteTabs");
 const stageSummary = document.querySelector("#stageSummary");
@@ -279,6 +280,7 @@ const spritePaths = {
   "ghost-purple": "/assets/player/sprites/ghost-purple.png",
   "core-orb-teal": "/assets/level/sprites/core-orb-teal.png",
   "core-orb-pink": "/assets/level/sprites/core-orb-pink.png",
+  "boost-orb": "/assets/generated/boost-orb.png",
   "crystal-teal": "/assets/level/sprites/crystal-teal.png",
   "crystal-pink": "/assets/level/sprites/crystal-pink.png",
   "crystal-purple": "/assets/level/sprites/crystal-purple.png",
@@ -416,6 +418,8 @@ const introSlides = [
     fallback: "archive",
   },
 ];
+
+const ENDLESS_ROOM_POOL = [12, 13, 14, 15, 16, 17, 18, 19];
 
 const rooms = [
   {
@@ -1007,6 +1011,8 @@ const state = {
   campaignTime: 0,
   campaignNextRoom: 0,
   campaignOfficialTime: null,
+  endlessActive: false,
+  endlessFloor: 1,
   progress: null,
   lastStageResult: null,
   player: null,
@@ -1032,6 +1038,7 @@ const state = {
   screenShake: 0,
   crashTimer: 0,
   crashInfo: null,
+  failureCount: 0,
   brokenDashGates: new Set(),
   hintCooldown: 0,
   roomIntroTimer: 0,
@@ -1045,6 +1052,7 @@ const PROGRESS_KEY = "rewind-runner-progress-v3";
 function createEmptyProgress() {
   return {
     unlocked: 0,
+    endlessBest: 0,
     stages: rooms.map(() => ({ bestTime: null, bestStars: 0, bestGhosts: null, bestMedal: "none", bestRoute: null })),
   };
 }
@@ -1056,6 +1064,7 @@ function readProgress() {
     const parsed = JSON.parse(raw);
     const base = createEmptyProgress();
     base.unlocked = clamp(Number(parsed.unlocked) || 0, 0, rooms.length - 1);
+    base.endlessBest = Math.max(0, Number(parsed.endlessBest) || 0);
     for (let i = 0; i < rooms.length; i += 1) {
       base.stages[i] = { ...base.stages[i], ...(parsed.stages?.[i] ?? {}) };
     }
@@ -1149,6 +1158,12 @@ function renderMenu() {
   const nextRoom = clamp(state.progress.unlocked, 0, rooms.length - 1);
   const clearedAny = state.progress.stages.some((stage) => stage.bestStars > 0);
   continueButton.textContent = clearedAny ? `방 ${nextRoom + 1} 이어하기` : "시작하기";
+  if (endlessButton) {
+    const unlocked = finalRoomCleared();
+    const nextFloor = Math.max(1, (state.progress.endlessBest || 0) + 1);
+    endlessButton.disabled = !unlocked;
+    endlessButton.textContent = unlocked ? `무한 탑 ${nextFloor}층` : "무한 탑 잠김";
+  }
 }
 
 function showIntro() {
@@ -1243,6 +1258,7 @@ function roomMechanicTags(room, index) {
   const tags = [];
   if (room.switches.length) tags.push({ label: "스위치", asset: generatedAssets.switch });
   if (room.lasers.length) tags.push({ label: "빔", asset: generatedAssets.laser });
+  if (index >= 5) tags.push({ label: "위험", asset: generatedAssets.laser });
   if ((room.dashGates ?? []).length || room.items?.some((item) => item.type === "dash")) {
     tags.push({ label: "대시", asset: generatedAssets.boost });
   }
@@ -1253,6 +1269,7 @@ function roomMechanicTags(room, index) {
     tags.push({ label: "위상", asset: generatedAssets.laserOpen });
   }
   if ((room.dashGates ?? []).some((gate) => gate.syncOnly)) tags.push({ label: "싱크", asset: generatedAssets.record });
+  if (index >= 12) tags.push({ label: "패러독스", asset: generatedAssets.record });
   if (index === JUDGE_CLEAR_INDEX) tags.push({ label: "공식", asset: generatedAssets.trophy });
   if (index === rooms.length - 1) tags.push({ label: "진짜 문", asset: generatedAssets.exit });
   if (!tags.length) tags.push({ label: "코어", asset: generatedAssets.core });
@@ -1267,9 +1284,34 @@ function roomMemoryAnchor(index = state.roomIndex) {
   return roomMemoryAnchors[index] ?? "실패는 삭제되지 않고 길이 된다.";
 }
 
+function finalRoomCleared() {
+  return (state.progress?.stages?.[rooms.length - 1]?.bestStars ?? 0) > 0;
+}
+
+function endlessRoomIndex(floor = state.endlessFloor) {
+  return ENDLESS_ROOM_POOL[(Math.max(1, floor) - 1) % ENDLESS_ROOM_POOL.length];
+}
+
+function startEndlessFloor(floor = 1) {
+  const nextFloor = Math.max(1, Math.floor(floor));
+  startGame(endlessRoomIndex(nextFloor), { endless: true, floor: nextFloor });
+}
+
 function startGame(index = 0, options = {}) {
+  if (options.endless) {
+    state.endlessActive = true;
+    state.endlessFloor = Math.max(1, Math.floor(options.floor ?? state.endlessFloor ?? 1));
+  } else {
+    state.endlessActive = false;
+    state.endlessFloor = 1;
+  }
   const preserveCampaign = Boolean(options.preserveCampaign);
-  if (!preserveCampaign) {
+  if (state.endlessActive) {
+    state.campaignActive = false;
+    state.campaignTime = 0;
+    state.campaignNextRoom = -1;
+    state.campaignOfficialTime = null;
+  } else if (!preserveCampaign) {
     state.campaignActive = index === 0;
     state.campaignTime = 0;
     state.campaignNextRoom = index === 0 ? 0 : -1;
@@ -1341,6 +1383,7 @@ function startRoom(index) {
   state.screenShake = 0;
   state.crashTimer = 0;
   state.crashInfo = null;
+  state.failureCount = 0;
   state.hintCooldown = 0;
   state.roomIntroTimer = 2.3;
   state.roomIntroShown = true;
@@ -1422,6 +1465,13 @@ function restartLoop(saveEcho = true, reason = "RECORD") {
   const room = rooms[state.roomIndex];
   state.replayTime = 0;
   state.loopNumber += 1;
+  const loopLimit = currentLoopLimit(room);
+  if (loopLimit && state.loopNumber > loopLimit) {
+    showToast("루프 제한 초과", "이 방은 처음부터 다시 설계해야 한다.");
+    playSfx("reset");
+    startRoom(state.roomIndex);
+    return;
+  }
   state.recording = [];
   state.sampleTimer = 0;
   state.itemsCollected = new Set();
@@ -1454,7 +1504,8 @@ function recordSnapPoint() {
     if (heldByEcho.has(sw.id)) continue;
     if (distance(state.player, sw) < 105 && actorCanPress(state.player, sw)) return { x: sw.x, y: sw.y };
   }
-  for (const laser of room.lasers) {
+  for (const rawLaser of room.lasers) {
+    const laser = laserRuntime(rawLaser);
     if (!laser.blockable || !laserPowered(laser) || laserBlocker(laser)) continue;
     const spot = laserRecordSpot(laser);
     if (distance(state.player, spot) < 132 || pointLineDistance(state.player.x, state.player.y, laser.x1, laser.y1, laser.x2, laser.y2) < 56) {
@@ -1568,18 +1619,25 @@ function finishStage() {
   pushStageTrace(false);
   const result = calculateStageResult(room);
   state.lastStageResult = result;
-  saveStageResult(state.roomIndex, result);
-  updateCampaignRun(result);
+  const endless = state.endlessActive;
+  if (endless) {
+    saveEndlessResult(result);
+  } else {
+    saveStageResult(state.roomIndex, result);
+    updateCampaignRun(result);
+  }
   state.screenShake = 0;
   state.failFlash = 0;
   state.syncPulse = 0;
   state.screen = "stage-result";
   endOverlay.classList.add("is-visible");
-  const finalRoom = state.roomIndex === rooms.length - 1;
-  const judgeClear = state.roomIndex === JUDGE_CLEAR_INDEX;
-  endOverlay.dataset.ending = finalRoom ? "true" : judgeClear ? "official" : "stage";
-  resultKicker.textContent = `방 ${state.roomIndex + 1}`;
-  resultTitle.textContent = finalRoom
+  const finalRoom = !endless && state.roomIndex === rooms.length - 1;
+  const judgeClear = !endless && state.roomIndex === JUDGE_CLEAR_INDEX;
+  endOverlay.dataset.ending = endless ? "endless" : finalRoom ? "true" : judgeClear ? "official" : "stage";
+  resultKicker.textContent = endless ? `무한 탑 ${state.endlessFloor}층` : `방 ${state.roomIndex + 1}`;
+  resultTitle.textContent = endless
+    ? `${state.endlessFloor}층 돌파`
+    : finalRoom
     ? "진짜 탈출 완료"
     : judgeClear
       ? "공식 탈출 완료"
@@ -1588,7 +1646,9 @@ function finishStage() {
       : result.stars >= 3
         ? "퍼펙트 런"
         : "클리어";
-  resultBody.textContent = finalRoom
+  resultBody.textContent = endless
+    ? "규칙이 한 단계 더 어려워진 다음 층이 열렸다."
+    : finalRoom
     ? trueEndingText
     : judgeClear
       ? officialEndingText
@@ -1598,22 +1658,22 @@ function finishStage() {
       ? room.clearLine
       : result.misses[0] ?? room.clearLine;
   if (resultMascot) resultMascot.src = generatedAssets.mascotClear;
-  if (resultBadge) resultBadge.src = finalRoom || judgeClear ? generatedAssets.trophy : generatedAssets.clear;
+  if (resultBadge) resultBadge.src = endless || finalRoom || judgeClear ? generatedAssets.trophy : generatedAssets.clear;
   finalStars.textContent = "★".repeat(result.stars).padEnd(3, "☆");
   finalLoops.textContent = String(state.loopNumber);
-  finalEchoes.textContent = `${result.ghosts} / ${room.parGhosts}`;
+  finalEchoes.textContent = `${result.ghosts} / ${currentParGhosts(room)}`;
   finalTime.textContent = formatPrecise(result.time);
   renderLoopReplay(result, room, finalRoom, judgeClear);
   if (resultInsight) resultInsight.innerHTML = renderResultInsight(result, room, finalRoom, judgeClear);
-  const enterLabel = finalRoom ? "Enter 처음부터" : judgeClear ? "Enter 기록 더 보기" : "Enter 다음";
+  const enterLabel = endless ? "Enter 다음 층" : finalRoom ? "Enter 처음부터" : judgeClear ? "Enter 기록 더 보기" : "Enter 다음";
   const menuLabel = judgeClear ? "M 탈출한다" : "M 메뉴";
   resultAdvice.innerHTML = `${renderResultAdvice(result, room, finalRoom, judgeClear)}<span>${enterLabel}</span><span>R 다시</span><span>${menuLabel}</span>`;
   restartButton.textContent = judgeClear ? "다시 달리기" : result.stars >= 3 ? "다시 뛰기" : "별 더 따기";
-  nextButton.textContent = finalRoom ? "처음부터" : judgeClear ? "기록을 더 본다" : "다음 방";
+  nextButton.textContent = endless ? "다음 층" : finalRoom ? "처음부터" : judgeClear ? "기록을 더 본다" : "다음 방";
   menuButton.textContent = judgeClear ? "탈출한다" : "메뉴";
   showToast(
-    finalRoom ? "진짜 문 개방" : judgeClear ? "공식 탈출 완료" : result.stars >= 3 ? "퍼펙트 런" : "클리어",
-    finalRoom ? "전부 나야." : judgeClear ? "남은 실패 로그를 삭제하시겠습니까?" : room.clearLine,
+    endless ? `무한 탑 ${state.endlessFloor}층 돌파` : finalRoom ? "진짜 문 개방" : judgeClear ? "공식 탈출 완료" : result.stars >= 3 ? "퍼펙트 런" : "클리어",
+    endless ? "다음 층은 더 빠르고 좁다." : finalRoom ? "전부 나야." : judgeClear ? "남은 실패 로그를 삭제하시겠습니까?" : room.clearLine,
   );
   playSfx(finalRoom || judgeClear ? "win" : "clear");
 }
@@ -1644,7 +1704,7 @@ function renderLoopReplay(result, room, finalRoom, judgeClear) {
       };
     }),
   ];
-  const title = finalRoom ? "진짜 문 합창 리플레이" : judgeClear ? "공식 탈출 리플레이" : "실패 장비 리플레이";
+  const title = state.endlessActive ? `무한 탑 ${state.endlessFloor}층 리플레이` : finalRoom ? "진짜 문 합창 리플레이" : judgeClear ? "공식 탈출 리플레이" : "실패 장비 리플레이";
   const subtitle = result.ghosts
     ? `${result.ghosts}개의 실패 기록이 동시에 길을 열었다.`
     : "현재 루트가 그대로 기록되었다.";
@@ -1675,14 +1735,16 @@ function calculateStageResult(room) {
   let stars = 3;
   const ghosts = state.echoes.length;
   const misses = [];
-  const designerTarget = designerTime(room);
-  if (ghosts > room.parGhosts) {
+  const designerTarget = state.endlessActive ? Math.max(7, Math.round(currentParTime(room) * 0.82 * 10) / 10) : designerTime(room);
+  const parGhosts = currentParGhosts(room);
+  const parTime = currentParTime(room);
+  if (ghosts > parGhosts) {
     stars -= 1;
-    misses.push(`고스트 ${ghosts - room.parGhosts}개 줄이면 별 +1`);
+    misses.push(`고스트 ${ghosts - parGhosts}개 줄이면 별 +1`);
   }
-  if (state.stageTime > room.parTime) {
+  if (state.stageTime > parTime) {
     stars -= 1;
-    misses.push(`${Math.ceil((state.stageTime - room.parTime) * 10) / 10}초 줄이면 별 +1`);
+    misses.push(`${Math.ceil((state.stageTime - parTime) * 10) / 10}초 줄이면 별 +1`);
   }
   return {
     stars: clamp(stars, 1, 3),
@@ -1696,10 +1758,15 @@ function calculateStageResult(room) {
     syncs: state.syncCount,
     boostBreaks: state.boostBreaks,
     flowBonus: Math.round(state.flowBonus * 10) / 10,
+    endlessFloor: state.endlessActive ? state.endlessFloor : null,
   };
 }
 
 function renderResultAdvice(result, room, finalRoom, judgeClear = false) {
+  if (state.endlessActive) {
+    const best = Math.max(state.progress.endlessBest || 0, state.endlessFloor);
+    return `<span>무한 탑 ${state.endlessFloor}층 돌파</span><span>최고 ${best}층</span><span>다음 층은 레이저 속도 상승</span><span>루프 제한 ${currentLoopLimit(room)}회</span><span>패러독스를 피해 기록을 설계하라</span>`;
+  }
   if (judgeClear) {
     const officialTime = state.campaignOfficialTime ?? campaignParTime(JUDGE_CLEAR_INDEX + 1);
     return `<span>12방 탈출 승인</span><span>공식 누적 ${formatPrecise(officialTime)} / ${formatClock(OFFICIAL_TARGET_SECONDS)}</span><span>삭제 대기 로그 발견</span><span>여기서 끝내면 실패 기록은 사라진다</span><span>기록을 더 보면 진짜 문으로 간다</span>`;
@@ -1713,15 +1780,15 @@ function renderResultAdvice(result, room, finalRoom, judgeClear = false) {
     const tags = [
       `<span>${clearFlavorLine()}</span>`,
       `<span>${result.designerClear ? "플래티넘 런" : "3★ 클리어"}</span>`,
-      `<span>고스트 ${result.ghosts}/${room.parGhosts}</span>`,
-      `<span>3★ 기록 ${formatPrecise(room.parTime)}</span>`,
+      `<span>고스트 ${result.ghosts}/${currentParGhosts(room)}</span>`,
+      `<span>3★ 기록 ${formatPrecise(currentParTime(room))}</span>`,
     ];
     if (result.designerClear) tags.push(`<span>디자이너 기록 돌파</span>`);
     else tags.push(`<span>디자이너까지 ${designerGap.toFixed(1)}초</span>`);
     if (result.syncs) tags.push(`<span>싱크 ${result.syncs}회</span>`);
     if (result.boostBreaks) tags.push(`<span>돌파 ${result.boostBreaks}회</span>`);
     if (result.flowBonus) tags.push(`<span>루프 체인 -${result.flowBonus.toFixed(1)}초</span>`);
-    if (result.time <= room.parTime * 0.8) tags.push(`<span>스피드런 루트</span>`);
+    if (result.time <= currentParTime(room) * 0.8) tags.push(`<span>스피드런 루트</span>`);
     return tags.join("");
   }
   return [`다음 목표`, ...result.misses].map((text) => `<span>${text}</span>`).join("");
@@ -1732,21 +1799,25 @@ function renderResultInsight(result, room, finalRoom, judgeClear = false) {
   const successReason = result.ghosts
     ? room.clearLine
     : "이번 루트가 다음 실패 설계의 기준점이 되었다.";
-  const unlockText = finalRoom
+  const unlockText = state.endlessActive
+    ? `무한 탑 ${state.endlessFloor + 1}층`
+    : finalRoom
     ? "진엔딩 복원 완료"
     : judgeClear
       ? "비인가 기록 루트 13~20 개방"
       : nextRoom
         ? `방 ${state.roomIndex + 2} · ${nextRoom.name}`
         : "아카이브 복원";
-  const learnedText = finalRoom
+  const learnedText = state.endlessActive
+    ? "층이 바뀌어도 실패는 다음 루프의 장비다."
+    : finalRoom
     ? "전부 나야."
     : judgeClear
       ? "공식 탈출 뒤에 진짜 문이 남아 있다."
       : roomMemoryAnchor();
   const cards = [
     { label: "왜 성공했는가", value: successReason, asset: result.ghosts ? generatedAssets.switch : generatedAssets.record },
-    { label: "새 요소 해금", value: unlockText, asset: finalRoom || judgeClear ? generatedAssets.trophy : generatedAssets.lock },
+    { label: "새 요소 해금", value: unlockText, asset: state.endlessActive || finalRoom || judgeClear ? generatedAssets.trophy : generatedAssets.lock },
     { label: "배운 기억", value: learnedText, asset: finalRoom ? generatedAssets.exit : generatedAssets.core },
   ];
   return cards
@@ -1816,6 +1887,11 @@ function saveStageResult(index, result) {
   record.bestMedal = betterMedal(record.bestMedal, result.medal);
   if (shouldSaveRoute) record.bestRoute = compactTrace(state.stageTrace);
   state.progress.unlocked = Math.max(state.progress.unlocked, Math.min(index + 1, rooms.length - 1));
+  writeProgress();
+}
+
+function saveEndlessResult(result) {
+  state.progress.endlessBest = Math.max(state.progress.endlessBest || 0, result.endlessFloor || state.endlessFloor);
   writeProgress();
 }
 
@@ -1927,7 +2003,8 @@ function updatePlayer(dt) {
 }
 
 function resolveBlockableLaserStops(room, radius) {
-  for (const laser of room.lasers) {
+  for (const rawLaser of room.lasers) {
+    const laser = laserRuntime(rawLaser);
     if (!laser.blockable || !laserPowered(laser) || laserBlocker(laser)) continue;
     const horizontal = Math.abs(laser.x2 - laser.x1) > Math.abs(laser.y2 - laser.y1);
     if (horizontal) {
@@ -2088,6 +2165,8 @@ function updateObjects(dt) {
       return;
     }
   }
+  if (updateHazards()) return;
+  if (checkParadoxRisk()) return;
 
   for (const gate of room.sizeGates ?? []) {
     if (!sizeGateOpen(gate) && circleRectOverlap(state.player, playerRadius() + 4, gate)) {
@@ -2233,13 +2312,15 @@ function updateEffects(dt) {
 
 function triggerCrash(title, body = "다시 기록.") {
   if (state.crashTimer > 0) return;
+  state.failureCount += 1;
   state.crashTimer = 0.75;
   state.crashInfo = { x: state.player.x, y: state.player.y, title };
   state.failFlash = 0.8;
   state.screenShake = 0.28;
   burst(state.player.x, state.player.y, "#ff5ba8", 30);
   floating("피격", state.player.x, state.player.y - 38, "#ff5ba8");
-  showToast(title, hasCanvasGuidance() ? body : "");
+  const assist = state.failureCount >= 3 ? " 다음 행동 패널을 따라 기록 지점을 하나씩 맡겨라." : "";
+  showToast(title, hasCanvasGuidance() || assist ? `${body}${assist}` : "");
   playSfx("hit");
 }
 
@@ -2472,6 +2553,146 @@ function solidRects(room) {
   ];
 }
 
+function currentParTime(room) {
+  if (!state.endlessActive) return room.parTime;
+  const pressure = Math.min(8.5, (state.endlessFloor - 1) * 0.22);
+  return Math.max(7.5, room.parTime - pressure);
+}
+
+function currentParGhosts(room) {
+  if (!state.endlessActive) return room.parGhosts;
+  return Math.max(1, room.parGhosts - Math.floor((state.endlessFloor - 1) / 22));
+}
+
+function currentLoopLimit(room) {
+  if (state.endlessActive) return Math.max(3, 7 - Math.floor((state.endlessFloor - 1) / 18));
+  return room.loopLimit ?? null;
+}
+
+function inferredLaserMotion(laser) {
+  const roomMotion = {
+    "cross-horizontal": { axis: "y", amplitude: 28, speed: 1.4, phase: 0.2 },
+    "prism-upper": { axis: "y", amplitude: 18, speed: 1.25, phase: 1.4 },
+    "prism-lower": { axis: "y", amplitude: 18, speed: 1.25, phase: 4.2 },
+    "archive-laser": { axis: "y", amplitude: 24, speed: 1.1, phase: 0.7 },
+    "spectrum-beam": { axis: "y", amplitude: 32, speed: 1.55, phase: 1.8 },
+    "relay-beam": { axis: "y", amplitude: 26, speed: 1.45, phase: 2.1 },
+    "merge-beam": { axis: "y", amplitude: 24, speed: 1.35, phase: 0.5 },
+    "memory-beam": { axis: "y", amplitude: 26, speed: 1.5, phase: 1.2 },
+  };
+  if (laser.motion) return laser.motion;
+  if (state.endlessActive && laser.blockable) {
+    const floorScale = clamp(1 + state.endlessFloor * 0.018, 1, 2.2);
+    const horizontal = Math.abs(laser.x2 - laser.x1) > Math.abs(laser.y2 - laser.y1);
+    return {
+      axis: horizontal ? "y" : "x",
+      amplitude: clamp(18 + state.endlessFloor * 1.4, 22, 56),
+      speed: 1.1 * floorScale,
+      phase: state.endlessFloor * 0.47,
+    };
+  }
+  return roomMotion[laser.id] ?? null;
+}
+
+function laserRuntime(laser, t = state.replayTime) {
+  if (!laser || laser.__runtime) return laser;
+  const motion = inferredLaserMotion(laser);
+  if (!motion) return laser;
+  const amount = Math.sin(t * (motion.speed ?? 1) + (motion.phase ?? 0)) * (motion.amplitude ?? 0);
+  const dx = motion.axis === "x" ? amount : 0;
+  const dy = motion.axis === "y" ? amount : 0;
+  return {
+    ...laser,
+    __runtime: true,
+    x1: laser.x1 + dx,
+    y1: laser.y1 + dy,
+    x2: laser.x2 + dx,
+    y2: laser.y2 + dy,
+    recordSpot: laser.recordSpot ? { x: laser.recordSpot.x + dx, y: laser.recordSpot.y + dy } : undefined,
+  };
+}
+
+function activeHazards() {
+  const floor = state.endlessActive ? state.endlessFloor : state.roomIndex + 1;
+  const hazards = [];
+  if (state.roomIndex >= 5) {
+    hazards.push({ type: "spike", id: "lane-spike-a", x: 360, y: 250, w: 70, h: 28, phase: state.roomIndex * 0.7 });
+  }
+  if (state.roomIndex >= 10) {
+    hazards.push({ type: "spike", id: "lane-spike-b", x: 585, y: 318, w: 82, h: 28, phase: state.roomIndex * 0.31, motion: { axis: "x", amplitude: 22, speed: 1.2 } });
+  }
+  if (state.roomIndex >= 12) {
+    hazards.push({ type: "sentry", id: "archive-sentry", x: 486, y: 108, range: 150, radius: 34, speed: 1.1, phase: 0.8 });
+  }
+  if (state.endlessActive) {
+    hazards.push(
+      { type: "spike", id: "tower-spike", x: 430 + (floor % 3) * 70, y: floor % 2 ? 188 : 352, w: 78, h: 28, motion: { axis: "y", amplitude: clamp(16 + floor, 18, 52), speed: 1.25 + floor * 0.025, phase: floor } },
+      { type: "sentry", id: "tower-sentry", x: 610, y: 150 + (floor % 4) * 70, range: clamp(130 + floor * 3, 150, 270), radius: 30, speed: 1.25 + floor * 0.02, phase: floor * 0.35 },
+    );
+  }
+  return hazards;
+}
+
+function hazardRuntime(hazard) {
+  const motion = hazard.motion;
+  if (!motion) return hazard;
+  const amount = Math.sin(state.replayTime * (motion.speed ?? 1) + (motion.phase ?? 0)) * (motion.amplitude ?? 0);
+  return {
+    ...hazard,
+    x: hazard.x + (motion.axis === "x" ? amount : 0),
+    y: hazard.y + (motion.axis === "y" ? amount : 0),
+  };
+}
+
+function nearestSentryTarget(hazard) {
+  const candidates = [{ type: "player", x: state.player.x, y: state.player.y, color: "#fff7e8" }];
+  for (const echo of state.echoes) {
+    const pos = echoPosition(echo, state.replayTime);
+    if (pos) candidates.push({ type: "echo", x: pos.x, y: pos.y, color: echo.color });
+  }
+  return candidates
+    .map((candidate) => ({ ...candidate, distance: distance(candidate, hazard) }))
+    .filter((candidate) => candidate.distance <= (hazard.range ?? 160))
+    .sort((a, b) => a.distance - b.distance)[0] ?? null;
+}
+
+function updateHazards() {
+  for (const rawHazard of activeHazards()) {
+    const hazard = hazardRuntime(rawHazard);
+    if (hazard.type === "spike") {
+      if (circleRectOverlap(state.player, playerRadius() + 3, hazard)) {
+        triggerCrash("가시 함정", "대시로 넘거나 잔상에게 길을 먼저 맡겨라.");
+        return true;
+      }
+      continue;
+    }
+    if (hazard.type === "sentry") {
+      const target = nearestSentryTarget(hazard);
+      if (!target) continue;
+      if (target.type === "player" && target.distance <= (hazard.radius ?? 32)) {
+        triggerCrash("추적 장치", "고스트가 먼저 시야를 끌게 만들어라.");
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+function checkParadoxRisk() {
+  if (!(state.endlessActive || state.roomIndex >= 12)) return false;
+  if (state.syncRush > 0.02 || state.replayTime < 0.55) return false;
+  const radius = 24 + Math.min(8, state.echoPower);
+  for (const echo of state.echoes) {
+    const pos = echoPosition(echo, state.replayTime);
+    if (!pos || pos.reset) continue;
+    if (distance(pos, state.player) < radius) {
+      triggerCrash("시간 패러독스", "현재의 너와 잔상의 경로가 겹쳤다.");
+      return true;
+    }
+  }
+  return false;
+}
+
 function routeHitsRect(from, to, rect) {
   if (!from || !to || !rect) return false;
   const pad = playerRadius() + 10;
@@ -2492,11 +2713,12 @@ function routeHitsRect(from, to, rect) {
 }
 
 function laserBlocker(laser) {
-  if (!laser.blockable) return null;
-  const blockRadius = laser.blockRadius ?? (86 + state.echoPower * 3);
+  const liveLaser = laserRuntime(laser);
+  if (!liveLaser.blockable) return null;
+  const blockRadius = liveLaser.blockRadius ?? (86 + state.echoPower * 3);
   for (const echo of state.echoes) {
     const pos = echoPosition(echo, state.replayTime);
-    if (pos && isLaserBlockPosition(pos, laser, blockRadius)) {
+    if (pos && isLaserBlockPosition(pos, liveLaser, blockRadius)) {
       return { ...pos, color: echo.color, id: echo.id };
     }
   }
@@ -2514,10 +2736,11 @@ function isLaserBlockPosition(pos, laser, radius) {
 }
 
 function laserRecordSpot(laser) {
-  if (laser.recordSpot) return laser.recordSpot;
-  const horizontal = Math.abs(laser.x2 - laser.x1) > Math.abs(laser.y2 - laser.y1);
-  const cx = (laser.x1 + laser.x2) / 2;
-  const cy = (laser.y1 + laser.y2) / 2;
+  const liveLaser = laserRuntime(laser);
+  if (liveLaser.recordSpot) return liveLaser.recordSpot;
+  const horizontal = Math.abs(liveLaser.x2 - liveLaser.x1) > Math.abs(liveLaser.y2 - liveLaser.y1);
+  const cx = (liveLaser.x1 + liveLaser.x2) / 2;
+  const cy = (liveLaser.y1 + liveLaser.y2) / 2;
   return horizontal ? { x: cx, y: cy - 46 } : { x: cx - 46, y: cy };
 }
 
@@ -2528,10 +2751,11 @@ function laserPowered(laser) {
 }
 
 function laserHitsPlayer(laser) {
-  if (!laserPowered(laser)) return false;
+  const liveLaser = laserRuntime(laser);
+  if (!laserPowered(liveLaser)) return false;
   const radius = playerRadius() + 4;
-  if (pointLineDistance(state.player.x, state.player.y, laser.x1, laser.y1, laser.x2, laser.y2) >= radius) return false;
-  const blocker = laserBlocker(laser);
+  if (pointLineDistance(state.player.x, state.player.y, liveLaser.x1, liveLaser.y1, liveLaser.x2, liveLaser.y2) >= radius) return false;
+  const blocker = laserBlocker(liveLaser);
   return !blocker;
 }
 
@@ -2578,9 +2802,11 @@ function updateHud() {
   const mission = getMissionState();
   const record = state.progress.stages[state.roomIndex];
   const platinumUnlocked = (record?.bestStars ?? 0) >= 3;
-  const paceTarget = platinumUnlocked ? designerTime(room) : room.parTime;
-  const paceLabel = platinumUnlocked ? "플래티넘" : "3★";
-  roomText.textContent = `${state.roomIndex + 1} / ${rooms.length}`;
+  const parTime = currentParTime(room);
+  const parGhosts = currentParGhosts(room);
+  const paceTarget = state.endlessActive ? Math.max(7, Math.round(parTime * 0.82 * 10) / 10) : platinumUnlocked ? designerTime(room) : parTime;
+  const paceLabel = state.endlessActive ? "탑 보너스" : platinumUnlocked ? "플래티넘" : "3★";
+  roomText.textContent = state.endlessActive ? `${state.endlessFloor}F` : `${state.roomIndex + 1} / ${rooms.length}`;
   loopText.textContent = String(state.loopNumber);
   echoText.textContent = `${state.echoes.length} / ${MAX_GHOSTS}`;
   coreText.textContent = `${state.collected.size} / ${room.cores.length}`;
@@ -2591,21 +2817,25 @@ function updateHud() {
   timerBar.classList.toggle("is-over-pace", overPace);
   paceText.textContent = overPace ? `${paceLabel} +${formatPrecise(state.stageTime - paceTarget)}` : `${paceLabel}까지 ${formatPrecise(paceLeft)}`;
   if (campaignText) {
-    const officialPar = campaignParTime(JUDGE_CLEAR_INDEX + 1);
-    const currentRoomTime = state.screen === "stage-result" ? 0 : state.stageTime;
-    const liveCampaignTime = state.campaignActive ? state.campaignTime + currentRoomTime : officialPar;
-    const campaignLabel = state.roomIndex <= JUDGE_CLEAR_INDEX ? "공식 누적" : "20방 누적";
-    campaignText.textContent = state.campaignActive
-      ? `${campaignLabel} ${formatPrecise(liveCampaignTime)} / ${formatClock(OFFICIAL_TARGET_SECONDS)}`
-      : `공식 기준 ${formatClock(officialPar)} / ${formatClock(OFFICIAL_TARGET_SECONDS)}`;
+    if (state.endlessActive) {
+      campaignText.textContent = `무한 탑 최고 ${state.progress.endlessBest || 0}층 / 현재 ${state.endlessFloor}층`;
+    } else {
+      const officialPar = campaignParTime(JUDGE_CLEAR_INDEX + 1);
+      const currentRoomTime = state.screen === "stage-result" ? 0 : state.stageTime;
+      const liveCampaignTime = state.campaignActive ? state.campaignTime + currentRoomTime : officialPar;
+      const campaignLabel = state.roomIndex <= JUDGE_CLEAR_INDEX ? "공식 누적" : "20방 누적";
+      campaignText.textContent = state.campaignActive
+        ? `${campaignLabel} ${formatPrecise(liveCampaignTime)} / ${formatClock(OFFICIAL_TARGET_SECONDS)}`
+        : `공식 기준 ${formatClock(officialPar)} / ${formatClock(OFFICIAL_TARGET_SECONDS)}`;
+    }
   }
-  roomChapter.textContent = `방 ${state.roomIndex + 1}`;
-  roomName.textContent = room.name;
-  roomGoal.textContent = room.goal;
+  roomChapter.textContent = state.endlessActive ? `무한 탑 ${state.endlessFloor}층` : `방 ${state.roomIndex + 1}`;
+  roomName.textContent = state.endlessActive ? `${room.name} · 변형` : room.name;
+  roomGoal.textContent = state.endlessActive ? `${room.goal} 제한 루프 ${currentLoopLimit(room)}회 안에 돌파.` : room.goal;
   if (roomStory) roomStory.textContent = room.story ?? "";
   syncChecklist.innerHTML = renderSyncChecklist(room);
   doorText.textContent = exitOpen ? "열림" : "잠김";
-  dangerText.textContent = room.lasers.length ? "레이저" : (room.phaseGates ?? []).length ? "위상" : (room.dashGates ?? []).some((gate) => gate.syncOnly) ? "싱크" : (room.sizeGates?.length || room.items?.some((item) => item.type !== "dash")) ? "변형" : room.switches.length > 1 ? "동기화" : "낮음";
+  dangerText.textContent = activeHazards().length ? "동적 위험" : room.lasers.length ? "레이저" : (room.phaseGates ?? []).length ? "위상" : (room.dashGates ?? []).some((gate) => gate.syncOnly) ? "싱크" : (room.sizeGates?.length || room.items?.some((item) => item.type !== "dash")) ? "변형" : room.switches.length > 1 ? "동기화" : "낮음";
   if (record?.bestTime) {
     const medalLabel = record.bestMedal === "platinum" ? "PT" : `${record.bestStars}★`;
     const pbLabel = record.bestRoute?.length ? "PB" : "";
@@ -2631,7 +2861,13 @@ function updateHud() {
     operatorText.textContent = "";
     missionSteps.innerHTML = "";
   }
-  stageRail.innerHTML = rooms.map((item, index) => {
+  stageRail.innerHTML = state.endlessActive
+    ? Array.from({ length: 20 }, (_, index) => {
+      const floor = Math.max(1, state.endlessFloor - 9) + index;
+      const stateClass = floor === state.endlessFloor ? "is-current" : floor < state.endlessFloor ? "is-cleared" : "";
+      return `<i class="${stateClass}" title="무한 탑 ${floor}층">${floor}</i>`;
+    }).join("")
+    : rooms.map((item, index) => {
     const stateClass = index === state.roomIndex ? "is-current" : index < state.roomIndex ? "is-cleared" : "";
     return `<i class="${stateClass}" title="${item.name}">${index + 1}</i>`;
   }).join("");
@@ -2861,19 +3097,19 @@ function drawRoom() {
 
   ctx.save();
   ctx.fillStyle = "rgba(16, 9, 43, 0.58)";
-  roundRect(76, 76, 238, 48, 14, "rgba(16, 9, 43, 0.56)");
+  roundRect(60, 14, 224, 32, 14, "rgba(16, 9, 43, 0.56)");
   ctx.fillStyle = "#fff7e8";
-  ctx.font = "1000 14px Inter, sans-serif";
-  ctx.fillText(`방 ${state.roomIndex + 1} · ${room.name}`, 96, 106);
+  ctx.font = "1000 12px Inter, sans-serif";
+  ctx.fillText(state.endlessActive ? `무한 탑 ${state.endlessFloor}층 · ${room.name}` : `방 ${state.roomIndex + 1} · ${room.name}`, 82, 35);
   ctx.fillStyle = palette[3];
   ctx.beginPath();
-  ctx.arc(88, 100, 5 + Math.sin(t * 5) * 1.5, 0, Math.PI * 2);
+  ctx.arc(72, 30, 4 + Math.sin(t * 5) * 1.2, 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
 
   drawArchiveZoneMarker(room, palette);
 
-  for (const wall of room.walls) drawRect(wall, "#2a1b65", "rgba(30, 220, 197, 0.2)");
+  for (const wall of room.walls) drawWallBarrier(wall);
 }
 
 function drawArchiveZoneMarker(room, palette) {
@@ -2898,16 +3134,16 @@ function drawArchiveZoneMarker(room, palette) {
   }
 
   const label = trueDoor ? "TRUE DOOR / 삭제 기록 복원" : official ? "OFFICIAL EXIT / 아카이브 승인" : "UNAUTHORIZED / 비인가 기억";
-  const x = W - 374;
-  const y = 76;
-  roundRect(x, y, 298, 44, 14, trueDoor ? "rgba(16, 9, 43, 0.82)" : official ? "rgba(255, 247, 232, 0.84)" : "rgba(44, 15, 76, 0.72)");
+  const x = W - 330;
+  const y = 14;
+  roundRect(x, y, 270, 32, 14, trueDoor ? "rgba(16, 9, 43, 0.82)" : official ? "rgba(255, 247, 232, 0.84)" : "rgba(44, 15, 76, 0.72)");
   ctx.strokeStyle = trueDoor ? "#ffd166" : official ? palette[3] : "#ff5ba8";
   ctx.lineWidth = 2;
-  roundedStroke(x, y, 298, 44, 14);
+  roundedStroke(x, y, 270, 32, 14);
   ctx.fillStyle = official ? "#2c2851" : "#fff7e8";
-  ctx.font = "1000 12px Inter, sans-serif";
+  ctx.font = "1000 10px Inter, sans-serif";
   ctx.textAlign = "center";
-  ctx.fillText(label, x + 149, y + 27);
+  ctx.fillText(label, x + 135, y + 21);
   ctx.restore();
   ctx.textAlign = "left";
 }
@@ -2920,8 +3156,6 @@ function drawObjectivePointer() {
   if (!target) return;
 
   const pulse = 1 + Math.sin(performance.now() / 150) * 0.12;
-  const near = distance(state.player, target) < 58;
-  const command = near ? recordCueLabel() || mission.title : mission.title;
   ctx.save();
   ctx.translate(target.x, target.y);
   ctx.scale(pulse, pulse);
@@ -2932,12 +3166,6 @@ function drawObjectivePointer() {
   ctx.beginPath();
   ctx.arc(0, 0, 34, 0, Math.PI * 2);
   ctx.stroke();
-  ctx.fillStyle = "#fff7e8";
-  ctx.font = "1000 13px Inter, sans-serif";
-  ctx.textAlign = "center";
-  roundRect(-58, -60, 116, 26, 13, near ? "rgba(255, 91, 168, 0.92)" : "rgba(16, 9, 43, 0.82)");
-  ctx.fillStyle = "#fff7e8";
-  ctx.fillText(command, 0, -42);
   ctx.restore();
 
   const dx = target.x - state.player.x;
@@ -2968,22 +3196,22 @@ function drawRoomIntroOverlay() {
   if (state.roomIntroTimer <= 0) return;
   const room = rooms[state.roomIndex];
   const alpha = clamp(state.roomIntroTimer / 2.3, 0, 1);
+  const overlayW = 500;
+  const overlayX = (W - overlayW) / 2;
+  const overlayY = 8;
   ctx.save();
   ctx.globalAlpha = Math.min(0.96, alpha * 1.15);
-  roundRect(270, 78, 420, 74, 14, "rgba(16, 9, 43, 0.72)");
+  roundRect(overlayX, overlayY, overlayW, 40, 14, "rgba(16, 9, 43, 0.72)");
   ctx.strokeStyle = "rgba(255, 255, 255, 0.68)";
   ctx.lineWidth = 2;
-  roundedStroke(270, 78, 420, 74, 14);
+  roundedStroke(overlayX, overlayY, overlayW, 40, 14);
   ctx.fillStyle = "#1edcc5";
-  ctx.font = "1000 12px Inter, sans-serif";
+  ctx.font = "1000 11px Inter, sans-serif";
   ctx.textAlign = "center";
-  ctx.fillText(`방 ${state.roomIndex + 1}`, W / 2, 98);
+  ctx.fillText(state.endlessActive ? `무한 탑 ${state.endlessFloor}층 · ${room.name}` : `방 ${state.roomIndex + 1} · ${room.name}`, W / 2, 24);
   ctx.fillStyle = "#fff7e8";
-  ctx.font = "1000 24px Inter, sans-serif";
-  ctx.fillText(room.name, W / 2, 126);
-  ctx.fillStyle = "#fff2bd";
-  ctx.font = "900 12px Inter, sans-serif";
-  ctx.fillText(room.tip, W / 2, 144);
+  ctx.font = "900 11px Inter, sans-serif";
+  ctx.fillText(room.tip, W / 2, 42);
   ctx.restore();
   ctx.textAlign = "left";
 }
@@ -3076,35 +3304,35 @@ function drawModeBadge() {
       : { title: "기본", body: "변형 없음", color: "#fff7e8" };
   const dashReady = state.dashCooldown <= 0.02;
   const syncReady = state.syncCooldown <= 0.02 && Boolean(nearestEcho(112));
-  const x = 28;
-  const y = 442;
+  const x = 18;
+  const y = H - 50;
   ctx.save();
   ctx.shadowColor = "rgba(0, 0, 0, 0.22)";
   ctx.shadowBlur = 18;
-  roundRect(x, y, 174, 82, 12, "rgba(16, 9, 43, 0.72)");
+  roundRect(x, y, 194, 42, 12, "rgba(16, 9, 43, 0.72)");
   ctx.strokeStyle = "rgba(255, 255, 255, 0.28)";
   ctx.lineWidth = 2;
-  roundedStroke(x, y, 174, 82, 12);
+  roundedStroke(x, y, 194, 42, 12);
   ctx.shadowBlur = 0;
   ctx.fillStyle = mode.color;
-  ctx.font = "1000 16px Inter, sans-serif";
-  ctx.fillText(mode.title, x + 16, y + 25);
+  ctx.font = "1000 13px Inter, sans-serif";
+  ctx.fillText(mode.title, x + 14, y + 17);
   ctx.fillStyle = "rgba(255, 247, 232, 0.82)";
-  ctx.font = "850 11px Inter, sans-serif";
-  ctx.fillText(mode.body, x + 16, y + 43);
+  ctx.font = "850 9px Inter, sans-serif";
+  ctx.fillText(mode.body, x + 14, y + 31);
   ctx.fillStyle = state.syncRush > 0 ? "#ffd166" : state.dashCharge ? "#ffd166" : dashReady ? "#1edcc5" : "#ff5ba8";
-  ctx.font = "1000 10px Inter, sans-serif";
-  ctx.fillText(state.syncRush > 0 ? `싱크 러시 ${state.syncRush.toFixed(1)}초` : state.dashCharge ? "부스트 준비" : dashReady ? "Space 준비" : `대시 ${state.dashCooldown.toFixed(1)}초`, x + 16, y + 58);
+  ctx.font = "1000 9px Inter, sans-serif";
+  ctx.fillText(state.syncRush > 0 ? `싱크 러시 ${state.syncRush.toFixed(1)}초` : state.dashCharge ? "부스트 준비" : dashReady ? "Space 준비" : `대시 ${state.dashCooldown.toFixed(1)}초`, x + 88, y + 18);
   ctx.fillStyle = state.phaseTimer > 0.02 ? "#b261ff" : syncReady ? "#ffd166" : "rgba(255, 247, 232, 0.6)";
-  ctx.fillText(state.phaseTimer > 0.02 ? `위상 ${state.phaseTimer.toFixed(1)}초` : syncReady ? "E 싱크 가능" : state.echoes.length ? (state.syncCooldown > 0.02 ? `싱크 ${state.syncCooldown.toFixed(1)}초` : "고스트 곁에서 E") : "고스트 후 E 싱크", x + 16, y + 73);
+  ctx.fillText(state.phaseTimer > 0.02 ? `위상 ${state.phaseTimer.toFixed(1)}초` : syncReady ? "E 싱크 가능" : state.echoes.length ? (state.syncCooldown > 0.02 ? `싱크 ${state.syncCooldown.toFixed(1)}초` : "고스트 곁에서 E") : "고스트 후 E 싱크", x + 88, y + 32);
   ctx.restore();
 }
 
 function drawAfterimageStatus() {
-  const specialRoom = state.roomIndex >= JUDGE_CLEAR_INDEX;
-  const boxW = 236;
-  const x = specialRoom ? 76 : W - boxW - 28;
-  const y = specialRoom ? 130 : 76;
+  const boxW = 216;
+  const boxH = 42;
+  const x = W - boxW - 18;
+  const y = H - boxH - 10;
   const activeCount = state.echoes.filter((echo) => !echoHasReachedEnd(echo)).length;
   const label = state.echoes.length
     ? activeCount
@@ -3118,25 +3346,25 @@ function drawAfterimageStatus() {
   ctx.save();
   ctx.shadowColor = "rgba(0, 0, 0, 0.22)";
   ctx.shadowBlur = 18;
-  roundRect(x, y, boxW, 70, 14, "rgba(16, 9, 43, 0.72)");
+  roundRect(x, y, boxW, boxH, 14, "rgba(16, 9, 43, 0.72)");
   ctx.strokeStyle = state.echoes.length ? "rgba(30, 220, 197, 0.72)" : "rgba(255, 209, 102, 0.76)";
   ctx.lineWidth = 2;
-  roundedStroke(x, y, boxW, 70, 14);
+  roundedStroke(x, y, boxW, boxH, 14);
   ctx.shadowBlur = 0;
   ctx.fillStyle = state.echoes.length ? "#1edcc5" : "#ffd166";
-  ctx.font = "1000 12px Inter, sans-serif";
-  ctx.fillText(label, x + 14, y + 25);
+  ctx.font = "1000 11px Inter, sans-serif";
+  ctx.fillText(label, x + 12, y + 17);
   ctx.fillStyle = "#fff7e8";
-  ctx.font = state.echoes.length > 2 ? "1000 13px Inter, sans-serif" : "1000 18px Inter, sans-serif";
-  ctx.fillText(hint, x + 14, y + 50);
+  ctx.font = state.echoes.length > 2 ? "1000 10px Inter, sans-serif" : "1000 12px Inter, sans-serif";
+  ctx.fillText(hint, x + 12, y + 32);
   if (state.echoes.length) {
-    let dotX = x + 14;
+    let dotX = x + boxW - 16 - (state.echoes.length - 1) * 13;
     for (const echo of state.echoes) {
       ctx.fillStyle = echo.color;
       ctx.beginPath();
-      ctx.arc(dotX, y + 59, 4, 0, Math.PI * 2);
+      ctx.arc(dotX, y + 14, 4, 0, Math.PI * 2);
       ctx.fill();
-      dotX += 14;
+      dotX += 13;
     }
   }
   ctx.restore();
@@ -3147,7 +3375,7 @@ function drawFlowBadge() {
   const alpha = clamp(state.flowTimer / 1.7, 0, 1);
   ctx.save();
   ctx.globalAlpha = Math.min(1, alpha * 1.2);
-  ctx.translate(W / 2, 64);
+  ctx.translate(W / 2, 28);
   ctx.shadowColor = "#ffd166";
   ctx.shadowBlur = 24;
   roundRect(-80, -23, 160, 46, 20, "rgba(16, 9, 43, 0.72)");
@@ -3164,6 +3392,72 @@ function drawFlowBadge() {
   ctx.restore();
 }
 
+function drawHazards() {
+  const hazards = activeHazards();
+  if (!hazards.length) return;
+  for (const rawHazard of hazards) {
+    const hazard = hazardRuntime(rawHazard);
+    if (hazard.type === "spike") {
+      ctx.save();
+      ctx.shadowColor = "#ff5ba8";
+      ctx.shadowBlur = 22;
+      roundRect(hazard.x, hazard.y, hazard.w, hazard.h, 8, "rgba(255, 91, 168, 0.18)");
+      ctx.strokeStyle = "rgba(255, 91, 168, 0.86)";
+      ctx.lineWidth = 3;
+      roundedStroke(hazard.x, hazard.y, hazard.w, hazard.h, 8);
+      const count = Math.max(2, Math.floor(hazard.w / 18));
+      ctx.fillStyle = "#ff5ba8";
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.7)";
+      ctx.lineWidth = 2;
+      for (let i = 0; i < count; i += 1) {
+        const x = hazard.x + 8 + i * ((hazard.w - 16) / Math.max(1, count - 1));
+        ctx.beginPath();
+        ctx.moveTo(x - 8, hazard.y + hazard.h - 3);
+        ctx.lineTo(x, hazard.y + 3);
+        ctx.lineTo(x + 8, hazard.y + hazard.h - 3);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+      }
+      ctx.restore();
+      continue;
+    }
+    if (hazard.type === "sentry") {
+      const target = nearestSentryTarget(hazard);
+      ctx.save();
+      ctx.translate(hazard.x, hazard.y);
+      ctx.shadowColor = "#ff5ba8";
+      ctx.shadowBlur = 18;
+      ctx.fillStyle = "rgba(16, 9, 43, 0.78)";
+      ctx.strokeStyle = target?.type === "echo" ? target.color : "rgba(255, 91, 168, 0.9)";
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(0, 0, 22, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = target?.type === "echo" ? target.color : "#ff5ba8";
+      ctx.beginPath();
+      ctx.arc(0, 0, 8, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+      if (target) {
+        ctx.save();
+        ctx.globalAlpha = target.type === "echo" ? 0.45 : 0.72;
+        ctx.strokeStyle = target.type === "echo" ? target.color : "#ff5ba8";
+        ctx.shadowColor = ctx.strokeStyle;
+        ctx.shadowBlur = 18;
+        ctx.lineWidth = target.type === "echo" ? 2 : 4;
+        ctx.setLineDash(target.type === "echo" ? [8, 10] : []);
+        ctx.beginPath();
+        ctx.moveTo(hazard.x, hazard.y);
+        ctx.lineTo(target.x, target.y);
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
+  }
+}
+
 function drawObjects() {
   const room = rooms[state.roomIndex];
   const active = activeSwitches();
@@ -3175,6 +3469,7 @@ function drawObjects() {
     const blocker = on ? laserBlocker(laser) : null;
     drawLaserBeam(laser, on, blocker);
   }
+  drawHazards();
 
   for (const gate of room.gates) {
     const open = gateOpen(gate);
@@ -3227,8 +3522,8 @@ function drawObjects() {
     if (state.itemsCollected.has(i)) continue;
     const item = room.items[i];
     const pulse = 1 + Math.sin(performance.now() / 150 + i) * 0.08;
-    const itemColor = item.type === "grow" ? "#ffd166" : item.type === "shrink" ? "#1edcc5" : item.type === "phase" ? "#b261ff" : "#ff5ba8";
-    const itemSprite = item.type === "grow" ? "crystal-pink" : item.type === "shrink" ? "crystal-teal" : item.type === "phase" ? "crystal-purple" : "core-orb-teal";
+    const itemColor = item.type === "grow" ? "#ffd166" : item.type === "shrink" ? "#1edcc5" : item.type === "phase" ? "#b261ff" : item.type === "dash" ? "#1edcc5" : "#ff5ba8";
+    const itemSprite = item.type === "grow" ? "crystal-pink" : item.type === "shrink" ? "crystal-teal" : item.type === "phase" ? "crystal-purple" : item.type === "dash" ? "boost-orb" : "core-orb-teal";
     const itemLabel = item.type === "grow" ? "중량" : item.type === "shrink" ? "소형" : item.type === "phase" ? "위상" : "부스트";
     const itemMark = item.type === "grow" ? "B" : item.type === "shrink" ? "S" : item.type === "phase" ? "P" : "+";
     ctx.save();
@@ -3237,7 +3532,7 @@ function drawObjects() {
     ctx.shadowColor = itemColor;
     ctx.shadowBlur = 22;
     drawSprite("floor-pad-on", 0, 16, 54, 24, { alpha: 0.55 });
-    if (!drawSprite(itemSprite, 0, -6, item.type === "dash" ? 48 : 42, item.type === "dash" ? 48 : 50)) {
+    if (!drawSprite(itemSprite, 0, -6, item.type === "dash" ? 54 : 42, item.type === "dash" ? 54 : 50)) {
       ctx.strokeStyle = itemColor;
       ctx.lineWidth = 5;
       ctx.beginPath();
@@ -3454,7 +3749,10 @@ function drawSwitchConnections(room, active) {
     const color = switchColor(sw.id);
     const targets = [
       ...room.gates.filter((gate) => gate.needs.includes(sw.id)).map((gate) => ({ x: gate.x + gate.w / 2, y: gate.y + gate.h / 2 })),
-      ...room.lasers.filter((laser) => laser.offWhen?.includes(sw.id)).map((laser) => ({ x: (laser.x1 + laser.x2) / 2, y: (laser.y1 + laser.y2) / 2 })),
+      ...room.lasers.filter((laser) => laser.offWhen?.includes(sw.id)).map((laser) => {
+        const liveLaser = laserRuntime(laser);
+        return { x: (liveLaser.x1 + liveLaser.x2) / 2, y: (liveLaser.y1 + liveLaser.y2) / 2 };
+      }),
     ];
     for (const target of targets) {
       ctx.save();
@@ -3487,6 +3785,7 @@ function switchColor(id) {
 }
 
 function drawLaserBeam(laser, on, blocker = null) {
+  laser = laserRuntime(laser);
   const dx = laser.x2 - laser.x1;
   const dy = laser.y2 - laser.y1;
   const len = Math.hypot(dx, dy);
@@ -3507,6 +3806,16 @@ function drawLaserBeam(laser, on, blocker = null) {
   ctx.rotate(angle);
   drawSprite(on || blocked ? "traffic-red" : "traffic-green", -len / 2, 0, 30, 42, { alpha: on || blocked ? 0.96 : 0.72 });
   drawSprite(on || blocked ? "traffic-red" : "traffic-green", len / 2, 0, 30, 42, { alpha: on || blocked ? 0.96 : 0.72, flipX: true });
+  if (on || blocked) {
+    ctx.save();
+    ctx.globalAlpha = 0.68;
+    roundRect(start, -19, end - start, 38, 18, "rgba(255, 79, 143, 0.12)");
+    ctx.strokeStyle = "rgba(255, 79, 143, 0.38)";
+    ctx.lineWidth = 2;
+    ctx.setLineDash([10, 8]);
+    roundedStroke(start, -19, end - start, 38, 18);
+    ctx.restore();
+  }
 
   for (const [a, b] of segments) {
     if (b <= a) continue;
@@ -3802,7 +4111,8 @@ function recordCueLabel() {
   for (const sw of room.switches) {
     if (distance(state.player, sw) < 42 && actorCanPress(state.player, sw)) return `R: ${nextGhost} 기록`;
   }
-  for (const laser of room.lasers) {
+  for (const rawLaser of room.lasers) {
+    const laser = laserRuntime(rawLaser);
     if (laser.blockable && laserBlocker(laser)) continue;
     const spot = laser.blockable ? laserRecordSpot(laser) : null;
     const nearRecordSpot = spot && distance(state.player, spot) < 72;
@@ -3962,6 +4272,40 @@ function drawRect(rect, fill, stroke) {
   }
 }
 
+function drawWallBarrier(rect) {
+  drawRect(rect, "#24165f", "rgba(30, 220, 197, 0.32)");
+  const horizontal = rect.w >= rect.h;
+  ctx.save();
+  ctx.globalAlpha = 0.72;
+  ctx.strokeStyle = "rgba(255, 209, 102, 0.72)";
+  ctx.lineWidth = 3;
+  ctx.setLineDash([10, 10]);
+  if (horizontal) {
+    ctx.beginPath();
+    ctx.moveTo(rect.x + 10, rect.y + rect.h / 2);
+    ctx.lineTo(rect.x + rect.w - 10, rect.y + rect.h / 2);
+    ctx.stroke();
+    for (let x = rect.x + 18; x < rect.x + rect.w - 12; x += 34) {
+      ctx.beginPath();
+      ctx.moveTo(x, rect.y + 6);
+      ctx.lineTo(x + 18, rect.y + rect.h - 6);
+      ctx.stroke();
+    }
+  } else {
+    ctx.beginPath();
+    ctx.moveTo(rect.x + rect.w / 2, rect.y + 10);
+    ctx.lineTo(rect.x + rect.w / 2, rect.y + rect.h - 10);
+    ctx.stroke();
+    for (let y = rect.y + 18; y < rect.y + rect.h - 12; y += 34) {
+      ctx.beginPath();
+      ctx.moveTo(rect.x + 6, y + 18);
+      ctx.lineTo(rect.x + rect.w - 6, y);
+      ctx.stroke();
+    }
+  }
+  ctx.restore();
+}
+
 function drawSprite(name, x, y, w, h, options = {}) {
   const image = sprites[name];
   if (!image?.complete || !image.naturalWidth) return false;
@@ -4052,7 +4396,10 @@ function describeEchoRole(echo) {
   const radius = 64;
   const sw = room.switches.find((item) => distance(last, item) < radius && actorCanPress(last, item));
   if (sw) return `${sw.label} 유지`;
-  const laser = room.lasers.find((item) => item.blockable && pointLineDistance(last.x, last.y, item.x1, item.y1, item.x2, item.y2) < radius);
+  const laser = room.lasers.find((item) => {
+    const liveLaser = laserRuntime(item);
+    return liveLaser.blockable && pointLineDistance(last.x, last.y, liveLaser.x1, liveLaser.y1, liveLaser.x2, liveLaser.y2) < radius;
+  });
   if (laser) return "레이저 보호";
   if (last.scale >= 1.18) return "중량 루트";
   if (last.scale <= 0.82) return "소형 루트";
@@ -4230,6 +4577,10 @@ function resetRoom() {
 }
 
 function startNextRoom() {
+  if (state.endlessActive) {
+    startEndlessFloor(state.endlessFloor + 1);
+    return;
+  }
   const next = state.roomIndex + 1;
   const loopToStart = next >= rooms.length;
   const preserveCampaign = state.campaignActive && !loopToStart && next === state.campaignNextRoom;
@@ -4253,6 +4604,13 @@ continueButton.addEventListener("click", () => {
 });
 tutorialButton.addEventListener("click", () => startGame(0));
 stageSelectButton.addEventListener("click", showStageSelect);
+endlessButton?.addEventListener("click", () => {
+  if (!finalRoomCleared()) {
+    showToast("무한 탑 잠김", "20번째 진짜 문을 연 뒤 시작된다.");
+    return;
+  }
+  startEndlessFloor(Math.max(1, (state.progress.endlessBest || 0) + 1));
+});
 stageBackButton.addEventListener("click", showMenu);
 stageRouteTabs?.addEventListener("click", (event) => {
   const button = event.target.closest("[data-stage-filter]");
