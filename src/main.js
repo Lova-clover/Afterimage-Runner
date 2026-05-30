@@ -89,6 +89,7 @@ const CANVAS_GUIDE_ROOMS = 1;
 const PHASE_SECONDS = 4.2;
 const JUDGE_CLEAR_INDEX = 11;
 const OFFICIAL_TARGET_SECONDS = 600;
+const LASER_BLOCK_GAP = 42;
 const keys = new Set();
 const movementKeys = new Set(["arrowleft", "arrowright", "arrowup", "arrowdown"]);
 const virtualPointerKeys = new Map();
@@ -2017,35 +2018,9 @@ function updatePlayer(dt) {
   p.y = clamp(p.y, 54 + radius, H - 54 - radius);
   if (dashing) breakDashGates(room, radius);
   for (const wall of solidRects(room)) resolveCircleRect(p, radius, wall);
-  resolveBlockableLaserStops(room, radius);
 
   if (dashing && Math.random() < 0.8) {
     particle(p.x - mx * 20, p.y - my * 20, "#ff5ba8", rand(3, 7), -mx * rand(60, 130), -my * rand(60, 130), 0.26, true);
-  }
-}
-
-function resolveBlockableLaserStops(room, radius) {
-  for (const rawLaser of room.lasers) {
-    const laser = laserRuntime(rawLaser);
-    if (!laser.blockable || !laserPowered(laser) || laserBlocker(laser)) continue;
-    const horizontal = Math.abs(laser.x2 - laser.x1) > Math.abs(laser.y2 - laser.y1);
-    if (horizontal) {
-      const y = laser.y1;
-      const minX = Math.min(laser.x1, laser.x2) - radius;
-      const maxX = Math.max(laser.x1, laser.x2) + radius;
-      if (state.player.x < minX || state.player.x > maxX || Math.abs(state.player.y - y) > radius + 7) continue;
-      const fromAbove = state.player.py <= y;
-      state.player.y = fromAbove ? y - radius - 9 : y + radius + 9;
-      showContextHint("레이저", "고스트로 막거나 다른 길로 돌아가라.");
-    } else {
-      const x = laser.x1;
-      const minY = Math.min(laser.y1, laser.y2) - radius;
-      const maxY = Math.max(laser.y1, laser.y2) + radius;
-      if (state.player.y < minY || state.player.y > maxY || Math.abs(state.player.x - x) > radius + 7) continue;
-      const fromLeft = state.player.px <= x;
-      state.player.x = fromLeft ? x - radius - 9 : x + radius + 9;
-      showContextHint("레이저", "고스트로 막거나 다른 길로 돌아가라.");
-    }
   }
 }
 
@@ -2871,9 +2846,53 @@ function laserHitsPlayer(laser) {
   const liveLaser = laserRuntime(laser);
   if (!laserPowered(liveLaser)) return false;
   const radius = playerRadius() + 4;
-  if (pointLineDistance(state.player.x, state.player.y, liveLaser.x1, liveLaser.y1, liveLaser.x2, liveLaser.y2) >= radius) return false;
+  const hitNow = pointLineDistance(state.player.x, state.player.y, liveLaser.x1, liveLaser.y1, liveLaser.x2, liveLaser.y2) < radius;
+  const hitPath = segmentSegmentDistance(
+    state.player.px ?? state.player.x,
+    state.player.py ?? state.player.y,
+    state.player.x,
+    state.player.y,
+    liveLaser.x1,
+    liveLaser.y1,
+    liveLaser.x2,
+    liveLaser.y2,
+  ) < radius;
+  if (!hitNow && !hitPath) return false;
   const blocker = laserBlocker(liveLaser);
-  return !blocker;
+  return !blocker || !laserBlockerCoversContact(liveLaser, blocker);
+}
+
+function laserBlockerCoversContact(laser, blocker) {
+  const playerContact = laserContactAlong(laser, state.player);
+  const blockerContact = pointAlongLaser(blocker.x, blocker.y, laser);
+  if (!playerContact || !blockerContact) return false;
+  return Math.abs(playerContact.along - blockerContact.along) <= LASER_BLOCK_GAP;
+}
+
+function laserContactAlong(laser, actor) {
+  const current = pointAlongLaser(actor.x, actor.y, laser);
+  const previous = pointAlongLaser(actor.px ?? actor.x, actor.py ?? actor.y, laser);
+  if (!current || !previous) return null;
+  const sideDelta = current.side - previous.side;
+  if (Math.abs(sideDelta) > 0.0001 && Math.sign(current.side) !== Math.sign(previous.side)) {
+    const k = clamp(-previous.side / sideDelta, 0, 1);
+    return { ...current, along: clamp(lerp(previous.along, current.along, k), 0, current.len) };
+  }
+  return { ...current, along: clamp(current.along, 0, current.len) };
+}
+
+function pointAlongLaser(px, py, laser) {
+  const dx = laser.x2 - laser.x1;
+  const dy = laser.y2 - laser.y1;
+  const len = Math.hypot(dx, dy);
+  if (len <= 0) return null;
+  const relX = px - laser.x1;
+  const relY = py - laser.y1;
+  return {
+    along: (relX * dx + relY * dy) / len,
+    side: (relX * dy - relY * dx) / len,
+    len,
+  };
 }
 
 function sizeGateOpen(gate) {
@@ -3957,7 +3976,7 @@ function drawLaserBeam(laser, on, blocker = null) {
   const localBlock = blocker
     ? ((blocker.x - laser.x1) * dx + (blocker.y - laser.y1) * dy) / Math.max(1, len) - len / 2
     : null;
-  const gap = 34;
+  const gap = LASER_BLOCK_GAP;
   const segments = blocked ? [[start, localBlock - gap], [localBlock + gap, end]] : [[start, end]];
 
   ctx.save();
@@ -4524,6 +4543,30 @@ function pointLineDistance(px, py, x1, y1, x2, y2) {
   const by = y2 - y1;
   const t = clamp((ax * bx + ay * by) / Math.max(1, bx * bx + by * by), 0, 1);
   return Math.hypot(px - (x1 + bx * t), py - (y1 + by * t));
+}
+
+function segmentSegmentDistance(ax, ay, bx, by, cx, cy, dx, dy) {
+  if (segmentsIntersect(ax, ay, bx, by, cx, cy, dx, dy)) return 0;
+  return Math.min(
+    pointLineDistance(ax, ay, cx, cy, dx, dy),
+    pointLineDistance(bx, by, cx, cy, dx, dy),
+    pointLineDistance(cx, cy, ax, ay, bx, by),
+    pointLineDistance(dx, dy, ax, ay, bx, by),
+  );
+}
+
+function segmentsIntersect(ax, ay, bx, by, cx, cy, dx, dy) {
+  const abx = bx - ax;
+  const aby = by - ay;
+  const cdx = dx - cx;
+  const cdy = dy - cy;
+  const acx = cx - ax;
+  const acy = cy - ay;
+  const denom = abx * cdy - aby * cdx;
+  if (Math.abs(denom) < 0.0001) return false;
+  const t = (acx * cdy - acy * cdx) / denom;
+  const u = (acx * aby - acy * abx) / denom;
+  return t >= 0 && t <= 1 && u >= 0 && u <= 1;
 }
 
 function distance(a, b) {

@@ -2914,6 +2914,8 @@ body.is-mobile-input .mobile-controls {
 .mobile-dpad {
   --stick-x: 0px;
   --stick-y: 0px;
+  --dpad-marker-size: 42px;
+  --dpad-marker-offset: 9px;
   position: relative;
   display: block;
   width: clamp(132px, 30vw, 178px);
@@ -2932,8 +2934,8 @@ body.is-mobile-input .mobile-controls {
   border: 1px solid rgba(30, 220, 197, 0.34);
   border-radius: inherit;
   background:
-    linear-gradient(90deg, transparent 47%, rgba(255, 255, 255, 0.16) 48% 52%, transparent 53%),
-    linear-gradient(0deg, transparent 47%, rgba(255, 255, 255, 0.16) 48% 52%, transparent 53%),
+    linear-gradient(90deg, transparent calc(50% - 1px), rgba(255, 255, 255, 0.16) 50%, transparent calc(50% + 1px)),
+    linear-gradient(0deg, transparent calc(50% - 1px), rgba(255, 255, 255, 0.16) 50%, transparent calc(50% + 1px)),
     radial-gradient(circle at 50% 50%, rgba(30, 220, 197, 0.3), rgba(122, 77, 242, 0.08) 46%, transparent 68%);
   box-shadow:
     inset 0 0 28px rgba(30, 220, 197, 0.16),
@@ -2967,47 +2969,60 @@ body.is-mobile-input .mobile-controls {
 }
 
 .mobile-dpad .mobile-key {
+  appearance: none;
   position: absolute;
   z-index: 1;
-  width: 42px;
-  min-width: 42px;
-  height: 42px;
-  min-height: 42px;
+  display: grid;
+  place-items: center;
+  width: var(--dpad-marker-size);
+  min-width: var(--dpad-marker-size);
+  height: var(--dpad-marker-size);
+  min-height: var(--dpad-marker-size);
+  border: 1px solid rgba(255, 255, 255, 0.2);
   padding: 0;
   border-radius: 999px;
-  opacity: 0.72;
+  background: rgba(52, 38, 115, 0.52);
+  color: rgba(255, 247, 255, 0.86);
+  font-size: 0.82rem;
+  line-height: 1;
+  opacity: 1;
   pointer-events: none;
   transform: none;
+  clip-path: circle(50% at 50% 50%);
   box-shadow: none;
+  text-shadow: 0 0 10px rgba(255, 255, 255, 0.32);
+  -webkit-tap-highlight-color: transparent;
 }
 
 .mobile-dpad .mobile-key:active,
 .mobile-dpad .mobile-key.is-held {
+  background: rgba(30, 220, 197, 0.22);
+  border-color: rgba(30, 220, 197, 0.52);
   transform: none;
 }
 
 .mobile-up {
-  left: 50%;
-  top: 9px;
-  transform: translateX(-50%);
+  left: calc((100% - var(--dpad-marker-size)) / 2);
+  top: var(--dpad-marker-offset);
+  transform: none;
 }
 
 .mobile-left {
-  left: 9px;
-  top: 50%;
-  transform: translateY(-50%);
+  left: var(--dpad-marker-offset);
+  top: calc((100% - var(--dpad-marker-size)) / 2);
+  transform: none;
 }
 
 .mobile-down {
-  left: 50%;
-  bottom: 9px;
-  transform: translateX(-50%);
+  left: calc((100% - var(--dpad-marker-size)) / 2);
+  bottom: var(--dpad-marker-offset);
+  transform: none;
 }
 
 .mobile-right {
-  right: 9px;
-  top: 50%;
-  transform: translateY(-50%);
+  right: var(--dpad-marker-offset);
+  top: calc((100% - var(--dpad-marker-size)) / 2);
+  transform: none;
 }
 
 .mobile-actions {
@@ -3061,6 +3076,8 @@ body.is-mobile-input .mobile-controls {
   }
 
   .mobile-dpad {
+    --dpad-marker-size: 34px;
+    --dpad-marker-offset: 8px;
     width: 128px;
     height: 128px;
   }
@@ -3071,10 +3088,6 @@ body.is-mobile-input .mobile-controls {
   }
 
   .mobile-dpad .mobile-key {
-    width: 34px;
-    min-width: 34px;
-    height: 34px;
-    min-height: 34px;
     font-size: 0.68rem;
   }
 
@@ -3112,6 +3125,63 @@ body.is-mobile-input .mobile-controls {
 }
 
 @media (max-height: 600px) and (orientation: landscape) {
+  .topbar {
+    grid-template-columns: minmax(132px, 168px) minmax(0, 1fr) auto;
+    gap: 8px;
+    padding: 7px 8px;
+  }
+
+  .brand {
+    gap: 8px;
+  }
+
+  .brand-logo {
+    width: 72px;
+  }
+
+  .brand span {
+    font-size: 0.66rem;
+    line-height: 1.1;
+  }
+
+  .hud-grid {
+    grid-template-columns: repeat(4, minmax(54px, 1fr)) minmax(104px, 1.18fr);
+    gap: 6px;
+  }
+
+  .hud-card,
+  .timer-card {
+    padding: 6px 7px;
+  }
+
+  .timer-card {
+    grid-column: auto;
+  }
+
+  .hud-card span,
+  .timer-card span {
+    font-size: 0.54rem;
+  }
+
+  .hud-card strong,
+  .timer-card strong {
+    margin-top: 2px;
+    font-size: 0.86rem;
+  }
+
+  .timer-card em {
+    margin-top: 1px;
+    font-size: 0.5rem;
+  }
+
+  .pause-button {
+    width: auto;
+    min-width: 68px;
+    min-height: 40px;
+    padding: 0 8px;
+    font-size: 0.66rem;
+  }
+
   body.is-mobile-input .app-shell {
     padding-bottom: calc(118px + env(safe-area-inset-bottom));
   }
@@ -3150,6 +3220,61 @@ body.is-mobile-input .mobile-controls {
   width: min(760px, 100%);
   margin: -2px auto 4px;
   transform: none;
+}
+
+@media (max-height: 600px) and (orientation: landscape) {
+  body.is-mobile-input .play-layout {
+    grid-template-columns: minmax(0, 1fr) minmax(320px, 340px);
+    align-items: start;
+  }
+
+  body.is-mobile-input .canvas-card {
+    grid-column: 1;
+    padding: 8px;
+  }
+
+  body.is-mobile-input .mobile-controls {
+    grid-column: 2;
+    width: 100%;
+    margin: 0;
+    grid-template-columns: 118px minmax(0, 1fr);
+    align-self: start;
+  }
+
+  body.is-mobile-input .side-panel {
+    grid-column: 1 / -1;
+  }
+
+  .mobile-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-auto-rows: 38px;
+  }
+
+  .mobile-dash {
+    grid-column: 1 / -1;
+    grid-row: 1;
+    min-height: 42px;
+  }
+
+  .mobile-record {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  .mobile-sync {
+    grid-column: 2;
+    grid-row: 2;
+  }
+
+  .mobile-delete {
+    grid-column: 1;
+    grid-row: 3;
+  }
+
+  .mobile-pause {
+    grid-column: 2;
+    grid-row: 3;
+  }
 }
 
 /* Zoom guard: once browser zoom or a compact window starts squeezing the HUD,
@@ -3217,5 +3342,67 @@ body.is-mobile-input .mobile-controls {
 
   .bottom-panel {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+/* Final D-pad lock: keep the four direction markers anchored to the
+   joystick center on mobile, compact laptops, and browser zoom. */
+body.is-mobile-input .mobile-dpad {
+  --dpad-marker-size: clamp(36px, 7.2vw, 44px);
+  --dpad-button-offset: clamp(42px, 9.2vw, 58px);
+  display: block;
+  box-sizing: border-box;
+  aspect-ratio: 1;
+}
+
+body.is-mobile-input .mobile-dpad .mobile-key {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  right: auto;
+  bottom: auto;
+  width: var(--dpad-marker-size);
+  min-width: var(--dpad-marker-size);
+  height: var(--dpad-marker-size);
+  min-height: var(--dpad-marker-size);
+  transform: translate(-50%, -50%) translate(var(--dpad-marker-x, 0px), var(--dpad-marker-y, 0px));
+}
+
+body.is-mobile-input .mobile-dpad .mobile-key:active,
+body.is-mobile-input .mobile-dpad .mobile-key.is-held {
+  transform: translate(-50%, -50%) translate(var(--dpad-marker-x, 0px), var(--dpad-marker-y, 0px)) scale(0.96);
+}
+
+body.is-mobile-input .mobile-up {
+  --dpad-marker-x: 0px;
+  --dpad-marker-y: calc(var(--dpad-button-offset) * -1);
+}
+
+body.is-mobile-input .mobile-left {
+  --dpad-marker-x: calc(var(--dpad-button-offset) * -1);
+  --dpad-marker-y: 0px;
+}
+
+body.is-mobile-input .mobile-down {
+  --dpad-marker-x: 0px;
+  --dpad-marker-y: var(--dpad-button-offset);
+}
+
+body.is-mobile-input .mobile-right {
+  --dpad-marker-x: var(--dpad-button-offset);
+  --dpad-marker-y: 0px;
+}
+
+@media (max-width: 520px) {
+  body.is-mobile-input .mobile-dpad {
+    --dpad-marker-size: 34px;
+    --dpad-button-offset: 43px;
+  }
+}
+
+@media (max-height: 600px) and (orientation: landscape) {
+  body.is-mobile-input .mobile-dpad {
+    --dpad-marker-size: 32px;
+    --dpad-button-offset: 39px;
   }
 }
