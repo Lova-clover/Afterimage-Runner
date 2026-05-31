@@ -90,6 +90,7 @@ const PHASE_SECONDS = 4.2;
 const JUDGE_CLEAR_INDEX = 11;
 const OFFICIAL_TARGET_SECONDS = 600;
 const LASER_BLOCK_GAP = 42;
+const ENDLESS_EXTRA_HAZARD_AFTER = 8;
 const keys = new Set();
 const movementKeys = new Set(["arrowleft", "arrowright", "arrowup", "arrowdown"]);
 const virtualPointerKeys = new Map();
@@ -1367,7 +1368,7 @@ function startRoom(index) {
   state.sampleTimer = 0;
   state.stageTrace = [];
   state.traceSampleTimer = 0;
-  state.bestRoute = bestRouteFor(index);
+  state.bestRoute = state.endlessActive ? null : bestRouteFor(index);
   state.collected = new Set();
   state.itemsCollected = new Set();
   state.itemMode = "normal";
@@ -1788,7 +1789,7 @@ function calculateStageResult(room) {
 function renderResultAdvice(result, room, finalRoom, judgeClear = false) {
   if (state.endlessActive) {
     const best = Math.max(state.progress.endlessBest || 0, state.endlessFloor);
-    return `<span>무한 탑 ${state.endlessFloor}층 돌파</span><span>최고 ${best}층</span><span>다음 층은 레이저 속도 상승</span><span>루프 제한 ${currentLoopLimit(room)}회</span><span>패러독스를 피해 기록을 설계하라</span>`;
+    return `<span>무한 탑 ${state.endlessFloor}층 돌파</span><span>최고 ${best}층</span><span>다음 층은 빔과 함정이 더 빠르다</span><span>루프 제한 ${currentLoopLimit(room)}회</span><span>패러독스를 피해 기록을 설계하라</span>`;
   }
   if (judgeClear) {
     const officialTime = state.campaignOfficialTime ?? campaignParTime(JUDGE_CLEAR_INDEX + 1);
@@ -2017,7 +2018,17 @@ function updatePlayer(dt) {
   p.x = clamp(p.x, 54 + radius, W - 54 - radius);
   p.y = clamp(p.y, 54 + radius, H - 54 - radius);
   if (dashing) breakDashGates(room, radius);
-  for (const wall of solidRects(room)) resolveCircleRect(p, radius, wall);
+  const solids = solidRects(room);
+  for (const wall of solids) {
+    const wasTouching = circleRectOverlap({ x: p.px, y: p.py }, radius, wall);
+    const isTouching = circleRectOverlap(p, radius, wall);
+    if (!wasTouching && !isTouching && pathHitsRect({ x: p.px, y: p.py }, p, wall, radius + 2, 14)) {
+      p.x = p.px;
+      p.y = p.py;
+      break;
+    }
+  }
+  for (const wall of solids) resolveCircleRect(p, radius, wall);
 
   if (dashing && Math.random() < 0.8) {
     particle(p.x - mx * 20, p.y - my * 20, "#ff5ba8", rand(3, 7), -mx * rand(60, 130), -my * rand(60, 130), 0.26, true);
@@ -2589,19 +2600,35 @@ function solidRects(room) {
   ];
 }
 
+function endlessDifficulty(floor = state.endlessFloor) {
+  const safeFloor = Math.max(1, Math.floor(floor));
+  return {
+    floor: safeFloor,
+    tier: Math.floor((safeFloor - 1) / 4),
+    speed: clamp(1 + (safeFloor - 1) * 0.024, 1, 1.65),
+    motion: clamp(1 + (safeFloor - 1) * 0.018, 1, 1.75),
+    timePressure: Math.min(9, (safeFloor - 1) * 0.24),
+  };
+}
+
 function currentParTime(room) {
   if (!state.endlessActive) return room.parTime;
-  const pressure = Math.min(8.5, (state.endlessFloor - 1) * 0.22);
+  const difficulty = endlessDifficulty();
+  const pressure = Math.min(room.parTime * 0.24, difficulty.timePressure);
   return Math.max(7.5, room.parTime - pressure);
 }
 
 function currentParGhosts(room) {
   if (!state.endlessActive) return room.parGhosts;
-  return Math.max(1, room.parGhosts - Math.floor((state.endlessFloor - 1) / 22));
+  return room.parGhosts;
 }
 
 function currentLoopLimit(room) {
-  if (state.endlessActive) return Math.max(3, 7 - Math.floor((state.endlessFloor - 1) / 18));
+  if (state.endlessActive) {
+    const requiredLoops = Math.min(MAX_GHOSTS + 1, Math.max(2, room.parGhosts + 1));
+    const pressureLimit = Math.max(3, 7 - Math.floor((state.endlessFloor - 1) / 18));
+    return Math.max(requiredLoops, pressureLimit);
+  }
   return room.loopLimit ?? null;
 }
 
@@ -2618,13 +2645,13 @@ function inferredLaserMotion(laser) {
   };
   if (laser.motion) return laser.motion;
   if (state.endlessActive && laser.blockable) {
-    const floorScale = clamp(1 + state.endlessFloor * 0.018, 1, 2.2);
+    const difficulty = endlessDifficulty();
     const horizontal = Math.abs(laser.x2 - laser.x1) > Math.abs(laser.y2 - laser.y1);
     return {
       axis: horizontal ? "y" : "x",
-      amplitude: clamp(18 + state.endlessFloor * 1.4, 22, 56),
-      speed: 1.1 * floorScale,
-      phase: state.endlessFloor * 0.47,
+      amplitude: clamp(18 + difficulty.floor * 1.4, 22, 56),
+      speed: 1.1 * difficulty.motion,
+      phase: difficulty.floor * 0.47,
     };
   }
   return roomMotion[laser.id] ?? null;
@@ -2651,20 +2678,26 @@ function laserRuntime(laser, t = state.replayTime) {
 function activeHazards() {
   const floor = state.endlessActive ? state.endlessFloor : state.roomIndex + 1;
   const hazards = [];
-  if (state.roomIndex >= 5) {
+  if (!state.endlessActive && state.roomIndex >= 5) {
     hazards.push({ type: "spike", id: "lane-spike-a", x: 360, y: 250, w: 70, h: 28, phase: state.roomIndex * 0.7 });
   }
-  if (state.roomIndex >= 10) {
+  if (!state.endlessActive && state.roomIndex >= 10) {
     hazards.push({ type: "spike", id: "lane-spike-b", x: 585, y: 318, w: 82, h: 28, phase: state.roomIndex * 0.31, motion: { axis: "x", amplitude: 22, speed: 1.2 } });
   }
-  if (state.roomIndex >= 12) {
+  if (!state.endlessActive && state.roomIndex >= 12) {
     hazards.push({ type: "sentry", id: "archive-sentry", x: 486, y: 108, range: 230, radius: 30, speed: 1.35, phase: 0.8, idleAmplitude: 20 });
   }
   if (state.endlessActive) {
+    const difficulty = endlessDifficulty(floor);
     hazards.push(
-      { type: "spike", id: "tower-spike", x: 430 + (floor % 3) * 70, y: floor % 2 ? 188 : 352, w: 78, h: 28, motion: { axis: "y", amplitude: clamp(16 + floor, 18, 52), speed: 1.25 + floor * 0.025, phase: floor } },
-      { type: "sentry", id: "tower-sentry", x: 610, y: 150 + (floor % 4) * 70, range: clamp(190 + floor * 4, 210, 320), radius: 30, speed: 1.45 + floor * 0.02, phase: floor * 0.35, idleAmplitude: 26 },
+      { type: "spike", id: "tower-spike", x: 430 + (floor % 3) * 70, y: floor % 2 ? 188 : 352, w: 78, h: 28, motion: { axis: "y", amplitude: clamp(16 + floor, 18, 52), speed: 1.05 * difficulty.speed, phase: floor } },
     );
+    if (floor >= 3) {
+      hazards.push({ type: "sentry", id: "tower-sentry", x: 610, y: 150 + (floor % 4) * 70, range: clamp(190 + floor * 4, 210, 320), radius: 30, speed: 1.12 * difficulty.speed, phase: floor * 0.35, idleAmplitude: 26 });
+    }
+    if (floor >= ENDLESS_EXTRA_HAZARD_AFTER) {
+      hazards.push({ type: "spike", id: "tower-spike-b", x: 360 + (floor % 4) * 86, y: floor % 2 ? 332 : 208, w: 66, h: 28, motion: { axis: "x", amplitude: clamp(16 + floor * 0.8, 18, 48), speed: 0.92 * difficulty.speed, phase: floor * 1.7 } });
+    }
   }
   return hazards;
 }
@@ -2786,15 +2819,17 @@ function checkParadoxRisk() {
 }
 
 function routeHitsRect(from, to, rect) {
+  return pathHitsRect(from, to, rect, playerRadius() + 10, 24);
+}
+
+function pathHitsRect(from, to, rect, pad, steps = 24) {
   if (!from || !to || !rect) return false;
-  const pad = playerRadius() + 10;
   const expanded = {
     x: rect.x - pad,
     y: rect.y - pad,
     w: rect.w + pad * 2,
     h: rect.h + pad * 2,
   };
-  const steps = 24;
   for (let i = 0; i <= steps; i += 1) {
     const t = i / steps;
     const x = lerp(from.x, to.x, t);
@@ -3564,15 +3599,16 @@ function drawHazards() {
     }
     if (hazard.type === "sentry") {
       const target = nearestSentryTarget(hazard);
-      const color = target?.type === "echo" ? target.color : "#ff5ba8";
-      const sprite = target?.type === "echo" ? "ghost-teal" : state.endlessActive ? "ghost-purple" : "ghost-pink";
+      const baseColor = state.endlessActive ? "#b261ff" : "#ff5ba8";
+      const color = target?.type === "echo" ? target.color : baseColor;
+      const sprite = state.endlessActive ? "ghost-purple" : "ghost-pink";
       ctx.save();
-      ctx.globalAlpha = target ? 0.15 : 0.08;
-      ctx.strokeStyle = color;
-      ctx.shadowColor = color;
-      ctx.shadowBlur = 12;
+      ctx.globalAlpha = target ? 0.16 : 0.09;
+      ctx.strokeStyle = baseColor;
+      ctx.shadowColor = baseColor;
+      ctx.shadowBlur = 14;
       ctx.lineWidth = 2;
-      ctx.setLineDash([10, 12]);
+      ctx.setLineDash([8, 12]);
       ctx.beginPath();
       ctx.arc(hazard.x, hazard.y, hazard.range ?? 160, 0, Math.PI * 2);
       ctx.stroke();
@@ -3580,23 +3616,30 @@ function drawHazards() {
 
       ctx.save();
       ctx.translate(hazard.x, hazard.y);
-      ctx.shadowColor = color;
+      ctx.shadowColor = baseColor;
       ctx.shadowBlur = target ? 24 : 16;
-      if (!drawSprite(sprite, 0, 0, 62, 62, { alpha: target ? 0.98 : 0.88, flipX: hazard.facingX < 0 })) {
+      if (!drawSprite(sprite, 0, 0, 92, 58, { alpha: target ? 0.96 : 0.82, flipX: hazard.facingX < 0 })) {
         ctx.fillStyle = "rgba(16, 9, 43, 0.78)";
         ctx.beginPath();
         ctx.arc(0, 0, 22, 0, Math.PI * 2);
         ctx.fill();
       }
-      ctx.strokeStyle = color;
+      ctx.globalCompositeOperation = "lighter";
+      ctx.strokeStyle = baseColor;
       ctx.lineWidth = 3;
       ctx.beginPath();
       ctx.arc(0, 0, hazard.radius ?? 30, 0, Math.PI * 2);
       ctx.stroke();
-      ctx.fillStyle = color;
+      ctx.globalCompositeOperation = "source-over";
+      ctx.fillStyle = baseColor;
       ctx.beginPath();
       ctx.arc((hazard.facingX ?? 1) * 18, -16, target ? 5 : 3.5, 0, Math.PI * 2);
       ctx.fill();
+      ctx.font = "1000 9px Inter, sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillStyle = "rgba(255, 247, 255, 0.88)";
+      ctx.fillText("추적", 0, -31);
       ctx.restore();
 
       if (target) {
@@ -4121,7 +4164,7 @@ function drawEchoes() {
 }
 
 function drawBestGhost() {
-  if (!state.bestRoute?.length || state.screen === "stage-result" || isTutorialRoom()) return;
+  if (state.endlessActive || !state.bestRoute?.length || state.screen === "stage-result" || isTutorialRoom()) return;
   const pos = tracePosition(state.bestRoute, state.stageTime);
   if (!pos) return;
   const color = "#6fcaff";
