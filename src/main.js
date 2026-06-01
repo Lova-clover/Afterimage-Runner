@@ -88,7 +88,8 @@ const DASH_BUFFER_SECONDS = 0.16;
 const CANVAS_GUIDE_ROOMS = 1;
 const PHASE_SECONDS = 4.2;
 const JUDGE_CLEAR_INDEX = 11;
-const OFFICIAL_TARGET_SECONDS = 600;
+const OFFICIAL_TARGET_SECONDS = 330;
+const TRUE_ROUTE_TARGET_SECONDS = 600;
 const LASER_BLOCK_GAP = 42;
 const ENDLESS_EXTRA_HAZARD_AFTER = 8;
 const keys = new Set();
@@ -1204,7 +1205,7 @@ function renderStageSelect() {
     const officialBest = bestCampaignTime(JUDGE_CLEAR_INDEX + 1);
     stageSummary.innerHTML = `
       <span><strong>공식 기준</strong>${formatClock(officialPar)} / ${formatClock(OFFICIAL_TARGET_SECONDS)}</span>
-      <span><strong>20방 기준</strong>${formatClock(campaignParTime())} / ${formatClock(OFFICIAL_TARGET_SECONDS)}</span>
+      <span><strong>20방 기준</strong>${formatClock(campaignParTime())} / ${formatClock(TRUE_ROUTE_TARGET_SECONDS)}</span>
       <span><strong>내 공식 최고</strong>${officialBest == null ? "--" : formatPrecise(officialBest)}</span>
     `;
   }
@@ -1647,8 +1648,8 @@ function finishStage() {
   if (endless) {
     saveEndlessResult(result);
   } else {
-    saveStageResult(state.roomIndex, result);
     updateCampaignRun(result);
+    saveStageResult(state.roomIndex, result);
   }
   state.screenShake = 0;
   state.failFlash = 0;
@@ -1657,6 +1658,7 @@ function finishStage() {
   endOverlay.classList.add("is-visible");
   const finalRoom = !endless && state.roomIndex === rooms.length - 1;
   const judgeClear = !endless && state.roomIndex === JUDGE_CLEAR_INDEX;
+  const officialQualified = judgeClear ? officialRouteQualified() : false;
   endOverlay.dataset.ending = endless ? "endless" : finalRoom ? "true" : judgeClear ? "official" : "stage";
   resultKicker.textContent = endless ? `무한 탑 ${state.endlessFloor}층` : `방 ${state.roomIndex + 1}`;
   resultTitle.textContent = endless
@@ -1664,7 +1666,7 @@ function finishStage() {
     : finalRoom
     ? "진짜 탈출 완료"
     : judgeClear
-      ? "공식 탈출 완료"
+      ? officialQualified ? "진루트 개방" : "기록 초과"
     : result.designerClear
       ? "디자이너 런"
       : result.stars >= 3
@@ -1675,7 +1677,9 @@ function finishStage() {
     : finalRoom
     ? trueEndingText
     : judgeClear
-      ? officialEndingText
+      ? officialQualified
+        ? officialEndingText
+        : `공식 탈출은 했지만 ${formatClock(OFFICIAL_TARGET_SECONDS)} 기준을 넘겼다. 시간을 줄이면 진짜 문이 열린다.`
     : result.designerClear
       ? "이 방의 숨은 기록까지 깼다."
       : result.stars >= 3
@@ -1689,15 +1693,15 @@ function finishStage() {
   finalTime.textContent = formatPrecise(result.time);
   renderLoopReplay(result, room, finalRoom, judgeClear);
   if (resultInsight) resultInsight.innerHTML = renderResultInsight(result, room, finalRoom, judgeClear);
-  const enterLabel = endless ? "Enter 다음 층" : finalRoom ? "Enter 처음부터" : judgeClear ? "Enter 기록 더 보기" : "Enter 다음";
+  const enterLabel = endless ? "Enter 다음 층" : finalRoom ? "Enter 처음부터" : judgeClear ? officialQualified ? "Enter 진루트" : "Enter 다시 도전" : "Enter 다음";
   const menuLabel = judgeClear ? "M 탈출한다" : "M 메뉴";
   resultAdvice.innerHTML = `${renderResultAdvice(result, room, finalRoom, judgeClear)}<span>${enterLabel}</span><span>R 다시</span><span>${menuLabel}</span>`;
   restartButton.textContent = judgeClear ? "다시 달리기" : result.stars >= 3 ? "다시 뛰기" : "별 더 따기";
-  nextButton.textContent = endless ? "다음 층" : finalRoom ? "처음부터" : judgeClear ? "기록을 더 본다" : "다음 방";
+  nextButton.textContent = endless ? "다음 층" : finalRoom ? "처음부터" : judgeClear ? officialQualified ? "진루트 입장" : "시간 줄이기" : "다음 방";
   menuButton.textContent = judgeClear ? "탈출한다" : "메뉴";
   showToast(
-    endless ? `무한 탑 ${state.endlessFloor}층 돌파` : finalRoom ? "진짜 문 개방" : judgeClear ? "공식 탈출 완료" : result.stars >= 3 ? "퍼펙트 런" : "클리어",
-    endless ? "다음 층은 더 빠르고 좁다." : finalRoom ? "전부 나야." : judgeClear ? "남은 실패 로그를 삭제하시겠습니까?" : room.clearLine,
+    endless ? `무한 탑 ${state.endlessFloor}층 돌파` : finalRoom ? "진짜 문 개방" : judgeClear ? officialQualified ? "진루트 개방" : "기록 초과" : result.stars >= 3 ? "퍼펙트 런" : "클리어",
+    endless ? "다음 층은 더 빠르고 좁다." : finalRoom ? "전부 나야." : judgeClear ? officialQualified ? "남은 실패 로그를 따라갈 수 있다." : "12방 누적 시간을 더 줄여라." : room.clearLine,
   );
   playSfx(finalRoom || judgeClear ? "win" : "clear");
 }
@@ -1709,6 +1713,16 @@ function updateCampaignRun(result) {
   if (state.roomIndex === JUDGE_CLEAR_INDEX) {
     state.campaignOfficialTime = state.campaignTime;
   }
+}
+
+function officialRouteTime() {
+  if (Number.isFinite(state.campaignOfficialTime)) return state.campaignOfficialTime;
+  const best = bestCampaignTime(JUDGE_CLEAR_INDEX + 1);
+  return Number.isFinite(best) ? best : campaignParTime(JUDGE_CLEAR_INDEX + 1);
+}
+
+function officialRouteQualified() {
+  return officialRouteTime() <= OFFICIAL_TARGET_SECONDS;
 }
 
 function renderLoopReplay(result, room, finalRoom, judgeClear) {
@@ -1792,12 +1806,15 @@ function renderResultAdvice(result, room, finalRoom, judgeClear = false) {
     return `<span>무한 탑 ${state.endlessFloor}층 돌파</span><span>최고 ${best}층</span><span>다음 층은 빔과 함정이 더 빠르다</span><span>루프 제한 ${currentLoopLimit(room)}회</span><span>패러독스를 피해 기록을 설계하라</span>`;
   }
   if (judgeClear) {
-    const officialTime = state.campaignOfficialTime ?? campaignParTime(JUDGE_CLEAR_INDEX + 1);
-    return `<span>12방 탈출 승인</span><span>공식 누적 ${formatPrecise(officialTime)} / ${formatClock(OFFICIAL_TARGET_SECONDS)}</span><span>삭제 대기 로그 발견</span><span>여기서 끝내면 실패 기록은 사라진다</span><span>기록을 더 보면 진짜 문으로 간다</span>`;
+    const officialTime = officialRouteTime();
+    const qualified = officialTime <= OFFICIAL_TARGET_SECONDS;
+    return qualified
+      ? `<span>12방 탈출 승인</span><span>공식 누적 ${formatPrecise(officialTime)} / ${formatClock(OFFICIAL_TARGET_SECONDS)}</span><span>삭제 대기 로그 발견</span><span>진짜 문으로 진입 가능</span><span>기록을 더 보면 삭제된 로그가 열린다</span>`
+      : `<span>공식 기록 초과</span><span>공식 누적 ${formatPrecise(officialTime)} / ${formatClock(OFFICIAL_TARGET_SECONDS)}</span><span>${formatPrecise(officialTime - OFFICIAL_TARGET_SECONDS)} 줄이면 진루트 개방</span><span>12방을 다시 압축하라</span><span>방 선택에서는 심사용으로 확인 가능</span>`;
   }
   if (finalRoom && result.stars >= 3) {
     const total = state.campaignActive ? state.campaignTime : campaignParTime();
-    return `<span>${result.designerClear ? "플래티넘 런" : "비인가 방 전부 통과"}</span><span>20방 누적 ${formatPrecise(total)} / ${formatClock(OFFICIAL_TARGET_SECONDS)}</span><span>삭제된 기록 복원</span><span>러너-07은 혼자 나가지 않았다</span><span>실패는 리셋되지 않았다</span>`;
+    return `<span>${result.designerClear ? "플래티넘 런" : "비인가 방 전부 통과"}</span><span>20방 누적 ${formatPrecise(total)} / ${formatClock(TRUE_ROUTE_TARGET_SECONDS)}</span><span>삭제된 기록 복원</span><span>러너-07은 혼자 나가지 않았다</span><span>실패는 리셋되지 않았다</span>`;
   }
   const designerGap = Math.max(0, Math.ceil((result.time - result.designerTarget) * 10) / 10);
   if (!result.misses.length) {
@@ -1828,7 +1845,7 @@ function renderResultInsight(result, room, finalRoom, judgeClear = false) {
     : finalRoom
     ? "진엔딩 복원 완료"
     : judgeClear
-      ? "비인가 기록 루트 13~20 개방"
+      ? officialRouteQualified() ? "비인가 기록 루트 13~20 개방" : "진루트 잠김 · 05:30 안으로"
       : nextRoom
         ? `방 ${state.roomIndex + 2} · ${nextRoom.name}`
         : "아카이브 복원";
@@ -1837,7 +1854,7 @@ function renderResultInsight(result, room, finalRoom, judgeClear = false) {
     : finalRoom
     ? "전부 나야."
     : judgeClear
-      ? "공식 탈출 뒤에 진짜 문이 남아 있다."
+      ? officialRouteQualified() ? "공식 탈출 뒤에 진짜 문이 남아 있다." : "시간을 줄이면 삭제된 문이 열린다."
       : roomMemoryAnchor();
   const cards = [
     { label: "왜 성공했는가", value: successReason, asset: result.ghosts ? generatedAssets.switch : generatedAssets.record },
@@ -1910,7 +1927,11 @@ function saveStageResult(index, result) {
   record.bestTime = record.bestTime == null ? result.time : Math.min(record.bestTime, result.time);
   record.bestMedal = betterMedal(record.bestMedal, result.medal);
   if (shouldSaveRoute) record.bestRoute = compactTrace(state.stageTrace);
-  state.progress.unlocked = Math.max(state.progress.unlocked, Math.min(index + 1, rooms.length - 1));
+  let nextUnlock = Math.min(index + 1, rooms.length - 1);
+  if (index === JUDGE_CLEAR_INDEX && !officialRouteQualified()) {
+    nextUnlock = JUDGE_CLEAR_INDEX;
+  }
+  state.progress.unlocked = Math.max(state.progress.unlocked, nextUnlock);
   writeProgress();
 }
 
@@ -2995,8 +3016,9 @@ function updateHud() {
       const currentRoomTime = state.screen === "stage-result" ? 0 : state.stageTime;
       const liveCampaignTime = state.campaignActive ? state.campaignTime + currentRoomTime : officialPar;
       const campaignLabel = state.roomIndex <= JUDGE_CLEAR_INDEX ? "공식 누적" : "20방 누적";
+      const campaignTarget = state.roomIndex <= JUDGE_CLEAR_INDEX ? OFFICIAL_TARGET_SECONDS : TRUE_ROUTE_TARGET_SECONDS;
       campaignText.textContent = state.campaignActive
-        ? `${campaignLabel} ${formatPrecise(liveCampaignTime)} / ${formatClock(OFFICIAL_TARGET_SECONDS)}`
+        ? `${campaignLabel} ${formatPrecise(liveCampaignTime)} / ${formatClock(campaignTarget)}`
         : `공식 기준 ${formatClock(officialPar)} / ${formatClock(OFFICIAL_TARGET_SECONDS)}`;
     }
   }
@@ -4837,6 +4859,11 @@ function resetRoom() {
 function startNextRoom() {
   if (state.endlessActive) {
     startEndlessFloor(state.endlessFloor + 1);
+    return;
+  }
+  if (state.roomIndex === JUDGE_CLEAR_INDEX && !officialRouteQualified()) {
+    startGame(0);
+    showToast("시간을 줄여라", `12방 누적 ${formatClock(OFFICIAL_TARGET_SECONDS)} 안으로.`);
     return;
   }
   const next = state.roomIndex + 1;
