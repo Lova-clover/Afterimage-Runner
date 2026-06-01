@@ -3601,7 +3601,6 @@ function drawHazards() {
       const target = nearestSentryTarget(hazard);
       const baseColor = state.endlessActive ? "#b261ff" : "#ff5ba8";
       const color = target?.type === "echo" ? target.color : baseColor;
-      const sprite = state.endlessActive ? "ghost-purple" : "ghost-pink";
       ctx.save();
       ctx.globalAlpha = target ? 0.16 : 0.09;
       ctx.strokeStyle = baseColor;
@@ -3618,28 +3617,40 @@ function drawHazards() {
       ctx.translate(hazard.x, hazard.y);
       ctx.shadowColor = baseColor;
       ctx.shadowBlur = target ? 24 : 16;
-      if (!drawSprite(sprite, 0, 0, 92, 58, { alpha: target ? 0.96 : 0.82, flipX: hazard.facingX < 0 })) {
+      if (!drawSprite("core-orb-pink", 0, -5, 58, 58, { alpha: target ? 0.98 : 0.86 })) {
         ctx.fillStyle = "rgba(16, 9, 43, 0.78)";
         ctx.beginPath();
         ctx.arc(0, 0, 22, 0, Math.PI * 2);
         ctx.fill();
       }
+      ctx.globalCompositeOperation = "source-over";
+      ctx.fillStyle = "rgba(16, 9, 43, 0.72)";
+      roundRect(-26, 24, 52, 14, 6, ctx.fillStyle);
+      ctx.strokeStyle = baseColor;
+      ctx.lineWidth = 2;
+      roundedStroke(-26, 24, 52, 14, 6);
+      ctx.beginPath();
+      ctx.moveTo(-11, 22);
+      ctx.lineTo(0, 8);
+      ctx.lineTo(11, 22);
+      ctx.stroke();
+
       ctx.globalCompositeOperation = "lighter";
       ctx.strokeStyle = baseColor;
       ctx.lineWidth = 3;
       ctx.beginPath();
-      ctx.arc(0, 0, hazard.radius ?? 30, 0, Math.PI * 2);
+      ctx.arc(0, -5, hazard.radius ?? 30, 0, Math.PI * 2);
       ctx.stroke();
       ctx.globalCompositeOperation = "source-over";
       ctx.fillStyle = baseColor;
       ctx.beginPath();
-      ctx.arc((hazard.facingX ?? 1) * 18, -16, target ? 5 : 3.5, 0, Math.PI * 2);
+      ctx.arc((hazard.facingX ?? 1) * 18, -21, target ? 5 : 3.5, 0, Math.PI * 2);
       ctx.fill();
       ctx.font = "1000 9px Inter, sans-serif";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.fillStyle = "rgba(255, 247, 255, 0.88)";
-      ctx.fillText("추적", 0, -31);
+      ctx.fillText("추적", 0, -43);
       ctx.restore();
 
       if (target) {
