@@ -2631,6 +2631,88 @@ body.is-mobile-input .mobile-controls {
   }
 }
 
+@media (max-height: 780px) and (min-width: 981px) {
+  .modal-panel.result {
+    grid-template-columns: minmax(0, 1fr) 190px;
+    gap: 8px 12px;
+    padding: 14px;
+  }
+
+  .result h1 {
+    font-size: 2.8rem;
+  }
+
+  .result p {
+    margin: 0;
+    font-size: 0.9rem;
+    line-height: 1.28;
+  }
+
+  .result-hero {
+    min-height: 178px;
+  }
+
+  #resultMascot {
+    max-height: 112px;
+  }
+
+  #resultBadge {
+    max-height: 58px;
+  }
+
+  .result-stars {
+    margin: 2px 0 0;
+    font-size: 2rem;
+    line-height: 1;
+  }
+
+  .result-replay {
+    padding: 8px;
+  }
+
+  .replay-track {
+    min-height: 42px;
+  }
+
+  .result-grid {
+    gap: 7px;
+    margin: 5px 0;
+  }
+
+  .result-grid div,
+  .result-insight div {
+    padding: 8px;
+  }
+
+  .result-insight {
+    gap: 7px;
+    margin: 0 0 6px;
+  }
+
+  .result-insight img {
+    width: 30px;
+    height: 30px;
+  }
+
+  .result-insight strong {
+    font-size: 0.72rem;
+    line-height: 1.28;
+  }
+
+  .result-advice {
+    margin: 0 0 6px;
+  }
+
+  .result-advice span {
+    padding: 5px 8px;
+    font-size: 0.72rem;
+  }
+
+  .result-actions {
+    gap: 8px;
+  }
+}
+
 @keyframes toastPop {
   0% {
     opacity: 0;
@@ -3113,7 +3195,7 @@ body.is-mobile-input .mobile-controls {
 
   .mobile-actions {
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    grid-auto-rows: 38px;
+    grid-auto-rows: minmax(46px, auto);
     gap: 6px;
   }
 
@@ -3217,7 +3299,7 @@ body.is-mobile-input .mobile-controls {
   }
 
   .mobile-actions {
-    grid-auto-rows: 38px;
+    grid-auto-rows: minmax(46px, auto);
   }
 
   .mobile-dash {
@@ -3267,7 +3349,7 @@ body.is-mobile-input .mobile-controls {
 
   .mobile-actions {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    grid-auto-rows: 38px;
+    grid-auto-rows: minmax(46px, auto);
   }
 
   .mobile-dash {

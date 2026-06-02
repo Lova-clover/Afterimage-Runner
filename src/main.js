@@ -2250,7 +2250,7 @@ function updateObjects(dt) {
 
 function exitReached(exit) {
   const center = { x: exit.x + exit.w / 2, y: exit.y + exit.h / 2 };
-  return distance(state.player, center) <= exitReachRadius(exit);
+  return circleRectOverlap(state.player, playerRadius() + 12, exit) || distance(state.player, center) <= exitReachRadius(exit);
 }
 
 function exitReachRadius(exit) {
