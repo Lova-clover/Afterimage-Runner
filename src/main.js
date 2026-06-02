@@ -1217,11 +1217,11 @@ function renderStageSelect() {
     ? visibleRooms
     .map(({ room, index, record }) => {
       const ahead = index > state.progress.unlocked;
-      const stars = "★".repeat(record.bestStars || 0).padEnd(3, "☆");
+      const stars = `별 ${record.bestStars || 0}/3`;
       const best = record.bestTime ? formatPrecise(record.bestTime) : "--";
       const designer = designerTime(room);
       const platinumDone = record.bestMedal === "platinum";
-      const designerText = record.bestStars >= 3 ? `플래티넘 ${formatPrecise(designer)}` : "3★ 후 플래티넘";
+      const designerText = record.bestStars >= 3 ? `플래티넘 ${formatPrecise(designer)}` : "3성 후 플래티넘";
       const challengeLabel = platinumDone ? "플래티넘 달성" : record.bestStars >= 3 ? "플래티넘 도전" : ahead ? "심사용 개방" : "첫 도전";
       const challengeClass = platinumDone ? "is-platinum" : record.bestStars >= 3 ? "is-available" : "is-none";
       const routeLabel = index <= JUDGE_CLEAR_INDEX ? "공식 루트" : "고급 아카이브";
@@ -1240,7 +1240,7 @@ function renderStageSelect() {
           <span class="route-pill">${routeLabel}</span>
           <span class="mechanic-row">${mechanics}</span>
           <span class="story-pill">${stageStoryTag(index)}</span>
-          <span class="stage-targets"><em>3★ ${room.parGhosts}잔상 / ${room.parTime}초</em><em>최고 ${best}</em></span>
+          <span class="stage-targets"><em>3성 ${room.parGhosts}잔상 / ${room.parTime}초</em><em>최고 ${best}</em></span>
           <span class="stage-targets"><em>${designerText}</em>${pbText}</span>
           <span class="stars">${stars}</span>
           <span class="medal-pill ${challengeClass}">${challengeLabel}</span>
@@ -1687,7 +1687,7 @@ function finishStage() {
       : result.misses[0] ?? room.clearLine;
   if (resultMascot) resultMascot.src = generatedAssets.mascotClear;
   if (resultBadge) resultBadge.src = endless || finalRoom || judgeClear ? generatedAssets.trophy : generatedAssets.clear;
-  finalStars.textContent = "★".repeat(result.stars).padEnd(3, "☆");
+  finalStars.textContent = `별 ${result.stars}/3`;
   finalLoops.textContent = String(state.loopNumber);
   finalEchoes.textContent = `${result.ghosts} / ${currentParGhosts(room)}`;
   finalTime.textContent = formatPrecise(result.time);
@@ -1820,9 +1820,9 @@ function renderResultAdvice(result, room, finalRoom, judgeClear = false) {
   if (!result.misses.length) {
     const tags = [
       `<span>${clearFlavorLine()}</span>`,
-      `<span>${result.designerClear ? "플래티넘 런" : "3★ 클리어"}</span>`,
+      `<span>${result.designerClear ? "플래티넘 런" : "3성 클리어"}</span>`,
       `<span>고스트 ${result.ghosts}/${currentParGhosts(room)}</span>`,
-      `<span>3★ 기록 ${formatPrecise(currentParTime(room))}</span>`,
+      `<span>3성 기록 ${formatPrecise(currentParTime(room))}</span>`,
     ];
     if (result.designerClear) tags.push(`<span>디자이너 기록 돌파</span>`);
     else tags.push(`<span>디자이너까지 ${designerGap.toFixed(1)}초</span>`);
@@ -2997,7 +2997,7 @@ function updateHud() {
   const parTime = currentParTime(room);
   const parGhosts = currentParGhosts(room);
   const paceTarget = state.endlessActive ? Math.max(7, Math.round(parTime * 0.82 * 10) / 10) : platinumUnlocked ? designerTime(room) : parTime;
-  const paceLabel = state.endlessActive ? "탑 보너스" : platinumUnlocked ? "플래티넘" : "3★";
+  const paceLabel = state.endlessActive ? "탑 보너스" : platinumUnlocked ? "플래티넘" : "3성";
   roomText.textContent = state.endlessActive ? `${state.endlessFloor}F` : `${state.roomIndex + 1} / ${rooms.length}`;
   loopText.textContent = String(state.loopNumber);
   echoText.textContent = `${state.echoes.length} / ${MAX_GHOSTS}`;
@@ -3030,7 +3030,7 @@ function updateHud() {
   doorText.textContent = exitOpen ? "열림" : "잠김";
   dangerText.textContent = activeHazards().length ? "동적 위험" : room.lasers.length ? "레이저" : (room.phaseGates ?? []).length ? "위상" : (room.dashGates ?? []).some((gate) => gate.syncOnly) ? "싱크" : (room.sizeGates?.length || room.items?.some((item) => item.type !== "dash")) ? "변형" : room.switches.length > 1 ? "동기화" : "낮음";
   if (record?.bestTime) {
-    const medalLabel = record.bestMedal === "platinum" ? "PT" : `${record.bestStars}★`;
+    const medalLabel = record.bestMedal === "platinum" ? "PT" : `${record.bestStars}성`;
     const pbLabel = record.bestRoute?.length ? "PB" : "";
     const compactBestTime = formatPrecise(record.bestTime).replace(/^00:/, "");
     bestText.innerHTML = `<span>${compactBestTime}</span><small>${[medalLabel, pbLabel].filter(Boolean).join(" · ")}</small>`;
@@ -3042,17 +3042,15 @@ function updateHud() {
   const guidanceVisible = hasCanvasGuidance();
   const mechanicIntro = mechanicIntros.get(state.roomIndex);
   const mechanicVisible = Boolean(mechanicIntro) && !guidanceVisible;
-  missionCard.classList.toggle("is-hidden", !guidanceVisible);
+  missionCard.classList.remove("is-hidden");
   operatorCard.classList.toggle("is-hidden", !guidanceVisible && !mechanicVisible);
+  missionSteps.innerHTML = `<strong>${mission.title}</strong>${mission.steps.map((step, index) => `<span><i>${index + 1}</i>${step}</span>`).join("")}`;
   if (guidanceVisible) {
     operatorText.textContent = mission.signal;
-    missionSteps.innerHTML = `<strong>${mission.title}</strong>${mission.steps.map((step, index) => `<span><i>${index + 1}</i>${step}</span>`).join("")}`;
   } else if (mechanicVisible) {
     operatorText.textContent = mechanicIntro.body;
-    missionSteps.innerHTML = "";
   } else {
     operatorText.textContent = "";
-    missionSteps.innerHTML = "";
   }
   stageRail.innerHTML = state.endlessActive
     ? Array.from({ length: 20 }, (_, index) => {
