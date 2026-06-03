@@ -5054,7 +5054,7 @@ window.addEventListener("keydown", (event) => {
     event.preventDefault();
   }
   if (state.screen === "stage-result" && !event.repeat) {
-    if (key === "enter" || key === " ") startNextRoom();
+    if (key === "enter") startNextRoom();
     else if (key === "r") restartCurrentChallenge();
     else if (key === "m" || key === "escape") showMenu();
     return;
