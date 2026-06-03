@@ -413,11 +413,11 @@ const introSlides = [
     fallback: "switch",
   },
   {
-    type: "story",
-    kicker: "러너-07 / 수동 기록",
-    title: "실패를 지우지 마라.",
-    body: "기록하고,\n맡기고,\n같이 빠져나가라.\n\n이번 탈출은 혼자가 아니다.",
-    image: "/assets/ui/slides/story-3.png",
+    type: "tutorial",
+    kicker: "조작 로그 / 시작 전 확인",
+    title: "뛰고, 맡기고, 다시 뛰어라.",
+    body: "WASD로 이동.\nSpace로 대시.\nR로 지금 움직임을 남긴다.\n\n막히면 Z로 마지막 기록을 지워라.",
+    image: "/assets/ui/slides/tutorial-1.png",
     fallback: "archive",
   },
 ];
