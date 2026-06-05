@@ -1611,13 +1611,17 @@ body.is-mobile-input .mobile-controls {
 
 .star-set {
   display: inline-flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
   align-items: center;
   gap: 0.14em;
   line-height: 1;
+  white-space: nowrap;
 }
 
 .star-icon {
   display: inline-grid;
+  flex: 0 0 auto;
   width: 1em;
   height: 1em;
   place-items: center;
@@ -1897,6 +1901,21 @@ body.is-mobile-input .mobile-controls {
 
 .stage-panel .stage-card .stars {
   margin-top: 4px;
+  color: var(--gold);
+}
+
+.stage-card .stars .star-set {
+  display: inline-flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+}
+
+.stage-card .stars .star-icon {
+  display: inline-grid;
+  flex: 0 0 auto;
+}
+
+.stage-panel .stage-card .star-icon.is-filled {
   color: var(--gold);
 }
 
