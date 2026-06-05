@@ -1218,8 +1218,8 @@ function renderStageSelect() {
     ? visibleRooms
     .map(({ room, index, record }) => {
       const ahead = index > state.progress.unlocked;
-      const stars = `별 ${record.bestStars || 0}/3`;
       const best = record.bestTime ? formatPrecise(record.bestTime) : "--";
+      const starMarkup = renderStars(record.bestStars || 0, `room ${index + 1} best stars`);
       const designer = designerTime(room);
       const platinumDone = record.bestMedal === "platinum";
       const designerText = record.bestStars >= 3 ? `플래티넘 ${formatPrecise(designer)}` : "3성 후 플래티넘";
@@ -1243,13 +1243,21 @@ function renderStageSelect() {
           <span class="story-pill">${stageStoryTag(index)}</span>
           <span class="stage-targets"><em>3성 ${room.parGhosts}잔상 / ${room.parTime}초</em><em>최고 ${best}</em></span>
           <span class="stage-targets"><em>${designerText}</em>${pbText}</span>
-          <span class="stars">${stars}</span>
+          <span class="stars">${starMarkup}</span>
           <span class="medal-pill ${challengeClass}">${challengeLabel}</span>
         </button>
       `;
     })
     .join("")
     : `<div class="stage-empty"><strong>아직 기록이 없습니다.</strong><span>공식 루트에서 한 방을 클리어하면 기록 경쟁 목록에 표시됩니다.</span></div>`;
+}
+
+function renderStars(count, label = "stars") {
+  const filled = clamp(Math.round(Number(count) || 0), 0, 3);
+  const icons = Array.from({ length: 3 }, (_, index) =>
+    `<span class="star-icon ${index < filled ? "is-filled" : "is-empty"}" aria-hidden="true"></span>`,
+  ).join("");
+  return `<span class="star-set" aria-label="${label}: ${filled} / 3">${icons}</span>`;
 }
 
 function isStageVisible(index, record) {
@@ -1689,7 +1697,7 @@ function finishStage() {
       : result.misses[0] ?? room.clearLine;
   if (resultMascot) resultMascot.src = generatedAssets.mascotClear;
   if (resultBadge) resultBadge.src = endless || finalRoom || judgeClear ? generatedAssets.trophy : generatedAssets.clear;
-  finalStars.textContent = `별 ${result.stars}/3`;
+  finalStars.innerHTML = renderStars(result.stars, "result stars");
   finalLoops.textContent = String(state.loopNumber);
   finalEchoes.textContent = `${result.ghosts} / ${currentParGhosts(room)}`;
   finalTime.textContent = formatPrecise(result.time);

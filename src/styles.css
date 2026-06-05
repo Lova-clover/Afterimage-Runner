@@ -1599,11 +1599,43 @@ body.is-mobile-input .mobile-controls {
 }
 
 .stage-card .stars {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
   margin-top: 10px;
   color: var(--gold);
   font-size: 1.08rem;
-  letter-spacing: 0.1em;
+  letter-spacing: 0;
   text-shadow: 0 2px 0 rgba(16, 9, 43, 0.18);
+}
+
+.star-set {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.14em;
+  line-height: 1;
+}
+
+.star-icon {
+  display: inline-grid;
+  width: 1em;
+  height: 1em;
+  place-items: center;
+  color: rgba(88, 62, 128, 0.24);
+}
+
+.star-icon::before {
+  content: "\2605";
+}
+
+.star-icon.is-filled {
+  color: var(--gold);
+  filter: drop-shadow(0 3px 0 rgba(16, 9, 43, 0.16)) drop-shadow(0 0 8px rgba(255, 209, 102, 0.34));
+}
+
+.star-icon.is-empty {
+  color: rgba(88, 62, 128, 0.24);
+  filter: none;
 }
 
 .stage-card .medal-pill {
@@ -1866,6 +1898,10 @@ body.is-mobile-input .mobile-controls {
 .stage-panel .stage-card .stars {
   margin-top: 4px;
   color: var(--gold);
+}
+
+.stage-panel .stage-card .star-icon.is-empty {
+  color: rgba(255, 255, 255, 0.22);
 }
 
 .stage-panel .stage-card .medal-pill,
@@ -2233,6 +2269,9 @@ body.is-mobile-input .mobile-controls {
 }
 
 .result-stars {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
   margin-top: 10px;
   color: var(--gold);
   font-size: 2.7rem;
@@ -2241,6 +2280,14 @@ body.is-mobile-input .mobile-controls {
   text-shadow:
     0 4px 0 rgba(16, 9, 43, 0.16),
     0 0 22px rgba(255, 209, 102, 0.34);
+}
+
+.result-stars .star-set {
+  gap: 0.18em;
+}
+
+.result-stars .star-icon.is-empty {
+  color: rgba(96, 74, 132, 0.22);
 }
 
 .result-replay {
