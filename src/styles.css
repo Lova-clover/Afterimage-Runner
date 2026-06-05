@@ -1512,6 +1512,37 @@ body.is-mobile-input .mobile-controls {
   text-transform: uppercase;
 }
 
+.stage-summary b {
+  display: block;
+  color: var(--ink);
+  font-size: 0.96rem;
+  line-height: 1.15;
+}
+
+.stage-summary em {
+  display: block;
+  margin-top: 3px;
+  color: rgba(68, 59, 99, 0.78);
+  font-size: 0.68rem;
+  font-style: normal;
+  line-height: 1.2;
+}
+
+.stage-summary span.is-good b,
+.stage-summary span.is-good em {
+  color: #0a746c;
+}
+
+.stage-summary span.is-alert b,
+.stage-summary span.is-alert em {
+  color: #c23065;
+}
+
+.stage-summary span.is-muted b,
+.stage-summary span.is-muted em {
+  color: rgba(68, 59, 99, 0.56);
+}
+
 .stage-card {
   position: relative;
   min-height: 186px;
@@ -1779,6 +1810,29 @@ body.is-mobile-input .mobile-controls {
 
 .stage-panel .stage-summary strong {
   color: var(--mint);
+}
+
+.stage-panel .stage-summary b {
+  color: #ffffff;
+}
+
+.stage-panel .stage-summary em {
+  color: rgba(230, 248, 255, 0.72);
+}
+
+.stage-panel .stage-summary span.is-good b,
+.stage-panel .stage-summary span.is-good em {
+  color: #55f5df;
+}
+
+.stage-panel .stage-summary span.is-alert b,
+.stage-panel .stage-summary span.is-alert em {
+  color: #ff8fbc;
+}
+
+.stage-panel .stage-summary span.is-muted b,
+.stage-panel .stage-summary span.is-muted em {
+  color: rgba(230, 248, 255, 0.54);
 }
 
 .stage-panel .stage-card {

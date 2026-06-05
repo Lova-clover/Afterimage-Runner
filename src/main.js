@@ -1265,12 +1265,24 @@ function renderStageSelect() {
   }
   if (stagePanel) stagePanel.dataset.filter = state.stageFilter;
   if (stageSummary) {
-    const officialPar = campaignParTime(JUDGE_CLEAR_INDEX + 1);
-    const officialBest = bestCampaignTime(JUDGE_CLEAR_INDEX + 1);
+    const officialSummary = campaignRecordSummary(JUDGE_CLEAR_INDEX + 1, OFFICIAL_TARGET_SECONDS);
+    const trueRouteSummary = campaignRecordSummary(rooms.length, TRUE_ROUTE_TARGET_SECONDS);
+    const endlessBest = Math.max(0, state.progress.endlessBest || 0);
+    const endlessSummary = finalRoomCleared()
+      ? {
+        value: endlessBest ? `최고 ${endlessBest}층` : "시작 가능",
+        detail: endlessBest ? `다음 목표 ${endlessBest + 1}층` : "20방 클리어 완료",
+        tone: endlessBest ? "is-good" : "",
+      }
+      : {
+        value: "잠김",
+        detail: "20방 클리어 후 해금",
+        tone: "is-muted",
+      };
     stageSummary.innerHTML = `
-      <span><strong>공식 기준</strong>${formatClock(officialPar)} / ${formatClock(OFFICIAL_TARGET_SECONDS)}</span>
-      <span><strong>20방 기준</strong>${formatClock(campaignParTime())} / ${formatClock(TRUE_ROUTE_TARGET_SECONDS)}</span>
-      <span><strong>내 공식 최고</strong>${officialBest == null ? "--" : formatPrecise(officialBest)}</span>
+      ${renderStageSummaryItem("내 공식 기록", officialSummary)}
+      ${renderStageSummaryItem("내 20방 기록", trueRouteSummary)}
+      ${renderStageSummaryItem("무한 탑 최고", endlessSummary)}
     `;
   }
   const visibleRooms = rooms
@@ -1983,6 +1995,43 @@ function designerTime(room) {
 
 function campaignParTime(count = rooms.length) {
   return rooms.slice(0, count).reduce((total, room) => total + room.parTime, 0);
+}
+
+function campaignRecordSummary(count, targetSeconds) {
+  const records = state.progress?.stages?.slice(0, count) ?? [];
+  const completed = records.filter((record) => Number.isFinite(record?.bestTime)).length;
+  const total = records.reduce((sum, record) => sum + (Number.isFinite(record?.bestTime) ? record.bestTime : 0), 0);
+  const target = formatClock(targetSeconds);
+  if (completed >= count) {
+    const delta = targetSeconds - total;
+    return {
+      value: `${formatPrecise(total)} / ${target}`,
+      detail: delta >= 0 ? `목표보다 ${formatPrecise(delta)} 빠름` : `목표 초과 ${formatPrecise(Math.abs(delta))}`,
+      tone: delta >= 0 ? "is-good" : "is-alert",
+    };
+  }
+  if (completed > 0) {
+    return {
+      value: `${completed}/${count}방 기록`,
+      detail: `현재 누적 ${formatPrecise(total)} · 목표 ${target}`,
+      tone: "",
+    };
+  }
+  return {
+    value: "기록 없음",
+    detail: `목표 ${target} · 0/${count}방`,
+    tone: "is-muted",
+  };
+}
+
+function renderStageSummaryItem(label, summary) {
+  return `
+    <span class="${summary.tone ?? ""}">
+      <strong>${label}</strong>
+      <b>${summary.value}</b>
+      <em>${summary.detail}</em>
+    </span>
+  `;
 }
 
 function bestCampaignTime(count = JUDGE_CLEAR_INDEX + 1) {
