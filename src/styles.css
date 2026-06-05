@@ -1298,6 +1298,11 @@ body.is-mobile-input .mobile-controls {
   letter-spacing: 0;
 }
 
+.loading-panel .system-label {
+  justify-self: center;
+  text-align: center;
+}
+
 .menu-hero p:not(.kicker):not(.system-label) {
   position: relative;
   z-index: 1;
