@@ -80,6 +80,7 @@ const H = 540;
 const RECORD_GUIDE_SECONDS = 12;
 const MAX_GHOSTS = 4;
 const PLAYER_R = 18;
+const COLLISION_EPSILON = 0.02;
 const SAMPLE_RATE = 1 / 30;
 const PB_TRACE_RATE = 1 / 12;
 const BASE_SPEED = 286;
@@ -2067,7 +2068,7 @@ function updatePlayer(dt) {
   }
 
   if (dashing) breakDashGates(room, radius);
-  for (const wall of solidRects(room)) resolveCircleRect(p, radius, wall);
+  resolvePlayerOverlaps(p, radius, solidRects(room));
   clampPlayerToArena(p, radius);
 
   if (dashing && Math.random() < 0.8) {
@@ -2084,6 +2085,7 @@ function movePlayerWithSolids(player, dx, dy, radius, solids) {
   for (let i = 0; i < steps; i += 1) {
     movePlayerAxis(player, "x", stepX, radius, solids);
     movePlayerAxis(player, "y", stepY, radius, solids);
+    resolvePlayerOverlaps(player, radius, solids);
   }
 }
 
@@ -2098,13 +2100,24 @@ function movePlayerAxis(player, axis, amount, radius, solids) {
     if (!circleRectOverlap(player, radius, wall)) continue;
     resolveCircleRectAxis(player, radius, wall, axis, amount, before);
     clampPlayerToArena(player, radius);
+    if (circleRectOverlap(player, radius, wall)) {
+      separateCircleRectByNearestExit(player, radius, wall, solids);
+      clampPlayerToArena(player, radius);
+    }
   }
 }
 
 function resolveCircleRectAxis(circle, r, rect, axis, delta, before) {
+  const insideHorizontal = circle.x >= rect.x && circle.x <= rect.x + rect.w;
+  const insideVertical = circle.y >= rect.y && circle.y <= rect.y + rect.h;
+
   if (axis === "x") {
-    const left = rect.x - r;
-    const right = rect.x + rect.w + r;
+    if (!insideVertical) {
+      resolveCircleRect(circle, r, rect);
+      return;
+    }
+    const left = rect.x - r - COLLISION_EPSILON;
+    const right = rect.x + rect.w + r + COLLISION_EPSILON;
     if (delta > 0 && before.x <= left + 0.001) {
       circle.x = left;
     } else if (delta < 0 && before.x >= right - 0.001) {
@@ -2115,8 +2128,12 @@ function resolveCircleRectAxis(circle, r, rect, axis, delta, before) {
     return;
   }
 
-  const top = rect.y - r;
-  const bottom = rect.y + rect.h + r;
+  if (!insideHorizontal) {
+    resolveCircleRect(circle, r, rect);
+    return;
+  }
+  const top = rect.y - r - COLLISION_EPSILON;
+  const bottom = rect.y + rect.h + r + COLLISION_EPSILON;
   if (delta > 0 && before.y <= top + 0.001) {
     circle.y = top;
   } else if (delta < 0 && before.y >= bottom - 0.001) {
@@ -2124,6 +2141,53 @@ function resolveCircleRectAxis(circle, r, rect, axis, delta, before) {
   } else {
     circle.y = Math.abs(circle.y - top) <= Math.abs(circle.y - bottom) ? top : bottom;
   }
+}
+
+function resolvePlayerOverlaps(player, radius, solids) {
+  for (let pass = 0; pass < 6; pass += 1) {
+    let resolved = false;
+    for (const wall of solids) {
+      if (!circleRectOverlap(player, radius, wall)) continue;
+      resolveCircleRect(player, radius, wall);
+      clampPlayerToArena(player, radius);
+      if (circleRectOverlap(player, radius, wall)) {
+        separateCircleRectByNearestExit(player, radius, wall, solids);
+        clampPlayerToArena(player, radius);
+      }
+      resolved = true;
+    }
+    if (!resolved) return;
+  }
+}
+
+function separateCircleRectByNearestExit(circle, r, rect, solids = [rect]) {
+  const exits = [
+    { axis: "x", value: rect.x - r - COLLISION_EPSILON },
+    { axis: "x", value: rect.x + rect.w + r + COLLISION_EPSILON },
+    { axis: "y", value: rect.y - r - COLLISION_EPSILON },
+    { axis: "y", value: rect.y + rect.h + r + COLLISION_EPSILON },
+  ]
+    .map((exit) => {
+      const candidate = { x: circle.x, y: circle.y };
+      candidate[exit.axis] = exit.value;
+      clampPlayerToArena(candidate, r);
+      return {
+        ...exit,
+        candidate,
+        distance: Math.hypot(circle.x - candidate.x, circle.y - candidate.y),
+      };
+    })
+    .filter((exit) => !circleRectOverlap(exit.candidate, r, rect))
+    .map((exit) => ({
+      ...exit,
+      clear: !solids.some((solid) => circleRectOverlap(exit.candidate, r, solid)),
+    }))
+    .sort((a, b) => a.distance - b.distance);
+
+  if (!exits.length) return;
+  const exit = exits.find((candidate) => candidate.clear) ?? exits[0];
+  circle.x = exit.candidate.x;
+  circle.y = exit.candidate.y;
 }
 
 function clampPlayerToArena(player, radius) {
@@ -4674,34 +4738,34 @@ function resolveCircleRect(circle, r, rect) {
     resolveCircleRectInterior(circle, r, rect);
     return;
   }
-  const push = r - d;
+  const push = r - d + COLLISION_EPSILON;
   circle.x += (dx / d) * push;
   circle.y += (dy / d) * push;
 }
 
 function resolveCircleRectInterior(circle, r, rect) {
   if (Number.isFinite(circle.px) && circle.px <= rect.x) {
-    circle.x = rect.x - r;
+    circle.x = rect.x - r - COLLISION_EPSILON;
     return;
   }
   if (Number.isFinite(circle.px) && circle.px >= rect.x + rect.w) {
-    circle.x = rect.x + rect.w + r;
+    circle.x = rect.x + rect.w + r + COLLISION_EPSILON;
     return;
   }
   if (Number.isFinite(circle.py) && circle.py <= rect.y) {
-    circle.y = rect.y - r;
+    circle.y = rect.y - r - COLLISION_EPSILON;
     return;
   }
   if (Number.isFinite(circle.py) && circle.py >= rect.y + rect.h) {
-    circle.y = rect.y + rect.h + r;
+    circle.y = rect.y + rect.h + r + COLLISION_EPSILON;
     return;
   }
 
   const exits = [
-    { axis: "x", value: rect.x - r, distance: Math.abs(circle.x - (rect.x - r)) },
-    { axis: "x", value: rect.x + rect.w + r, distance: Math.abs(circle.x - (rect.x + rect.w + r)) },
-    { axis: "y", value: rect.y - r, distance: Math.abs(circle.y - (rect.y - r)) },
-    { axis: "y", value: rect.y + rect.h + r, distance: Math.abs(circle.y - (rect.y + rect.h + r)) },
+    { axis: "x", value: rect.x - r - COLLISION_EPSILON, distance: Math.abs(circle.x - (rect.x - r - COLLISION_EPSILON)) },
+    { axis: "x", value: rect.x + rect.w + r + COLLISION_EPSILON, distance: Math.abs(circle.x - (rect.x + rect.w + r + COLLISION_EPSILON)) },
+    { axis: "y", value: rect.y - r - COLLISION_EPSILON, distance: Math.abs(circle.y - (rect.y - r - COLLISION_EPSILON)) },
+    { axis: "y", value: rect.y + rect.h + r + COLLISION_EPSILON, distance: Math.abs(circle.y - (rect.y + rect.h + r + COLLISION_EPSILON)) },
   ].sort((a, b) => a.distance - b.distance);
   circle[exits[0].axis] = exits[0].value;
 }
