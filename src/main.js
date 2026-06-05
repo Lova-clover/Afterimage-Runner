@@ -934,8 +934,8 @@ const routeShiftSlides = [
   {
     type: "story",
     kicker: "비인가 기록 / 13방 진입",
-    title: "비인가 방에 접속했다.",
-    body: "12번째 방은 탈출구가 아니라 경계선이었다.\n\n아카이브가 지운 방에 들어서자, 시간선이 서로 다른 방향으로 꼬이기 시작한다.",
+    title: "공식 루트 밖이다.",
+    body: "비인가 방에 접속했다.\n\n아카이브가 지운 방들이 다시 켜지고, 시간선이 서로 다른 방향으로 꼬이기 시작한다.",
     image: "/assets/ui/slides/route-shift-1.png",
     fallback: "switch",
   },
