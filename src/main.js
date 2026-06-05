@@ -930,16 +930,32 @@ const clearFlavorLines = [
   "삭제하지 않은 실패가 이번 방의 열쇠가 되었습니다.",
 ];
 
-const routeShiftIntro = {
-  title: "13방 도달 · 시간선 꼬임",
-  body: "시간선이 꼬였다. 잔상과 부딪히면 패러독스가 발생한다.",
-  operatorBody: "공식 루트 밖이다. 13방부터 현재와 잔상이 겹치면 시간 패러독스로 붕괴한다. 위상 코어, 추적 장치, 움직이는 함정까지 기록 설계에 포함하라.",
-  lines: [
-    "공식 루트 밖이다. 시간선이 꼬이기 시작했다.",
-    "현재와 잔상이 겹치면 시간 패러독스로 붕괴한다.",
-    "위상 코어와 늘어난 위협까지 기록 설계에 포함하라.",
-  ],
-};
+const routeShiftSlides = [
+  {
+    type: "story",
+    kicker: "비인가 기록 / 13방 진입",
+    title: "공식 루트 밖이다.",
+    body: "12번째 방은 탈출구가 아니라 경계선이었다.\n\n아카이브가 지운 방들이 다시 켜지고, 시간선이 서로 다른 방향으로 접히기 시작한다.",
+    image: "/assets/ui/slides/story-3.png",
+    fallback: "switch",
+  },
+  {
+    type: "story",
+    kicker: "시간선 꼬임 / 패러독스 경고",
+    title: "잔상과 부딪히지 마라.",
+    body: "13방부터 현재의 너와 기록된 잔상이 같은 지점에 겹치면 시간 패러독스가 발생한다.\n\n실패가 길이 되지만, 이제 실패와 같은 자리에 서면 붕괴한다.",
+    image: "/assets/ui/slides/story-2.png",
+    fallback: "rewind",
+  },
+  {
+    type: "tutorial",
+    kicker: "새 규칙 / 위상과 추적",
+    title: "위협까지 설계하라.",
+    body: "위상 코어는 닫힌 막을 잠깐 통과시킨다.\n추적 장치와 움직이는 함정은 현재뿐 아니라 잔상 경로까지 압박한다.\n\n이제 기록은 스위치가 아니라 시간선 전체를 맡는다.",
+    image: "/assets/ui/slides/tutorial-4.png",
+    fallback: "archive",
+  },
+];
 
 const mechanicIntros = new Map([
   [0, { title: "첫 기록", body: "스위치 위에서 R. 실패한 루프가 다음 문을 연다." }],
@@ -947,7 +963,7 @@ const mechanicIntros = new Map([
   [2, { title: "대시 연결", body: "A를 맡긴 고스트가 문을 열면 현재의 나는 부스트로 통과한다." }],
   [3, { title: "싱크", body: "고스트 곁에서 E. 다음 Space가 장벽을 끊는 대시가 된다." }],
   [4, { title: "형태 기록", body: "B+는 중량, C-는 소형. 몸을 바꾼 실패도 그대로 남는다." }],
-  [12, routeShiftIntro],
+  [12, { title: "위상 코어", body: "보라 코어는 잠깐 벽의 충돌을 지운다. 멈추지 말고 지나가라." }],
 ]);
 
 const stageStoryTags = [
@@ -999,6 +1015,8 @@ const roomMemoryAnchors = [
 const state = {
   screen: "menu",
   introIndex: 0,
+  introMode: "main",
+  pendingRouteShiftStart: null,
   stageFilter: "all",
   roomIndex: 0,
   replayTime: 0,
@@ -1059,7 +1077,7 @@ const state = {
   hintCooldown: 0,
   roomIntroTimer: 0,
   roomIntroShown: false,
-  routeShiftIntroSeen: false,
+  routeShiftBriefingSeen: false,
   doorWasOpen: false,
   syncWasShown: false,
 };
@@ -1101,8 +1119,14 @@ function writeProgress() {
 
 state.progress = readProgress();
 
+function activeIntroSlides() {
+  return state.introMode === "route-shift" ? routeShiftSlides : introSlides;
+}
+
 function renderIntro() {
-  const slide = introSlides[state.introIndex];
+  const slides = activeIntroSlides();
+  const slide = slides[state.introIndex];
+  introPanel.classList.toggle("route-shift-briefing", state.introMode === "route-shift");
   introKicker.textContent = slide.kicker;
   introTitle.textContent = slide.title;
   introBody.textContent = slide.body;
@@ -1122,7 +1146,7 @@ function renderIntro() {
   introImage.alt = slide.title;
   introImage.src = slide.image;
 
-  introDots.innerHTML = introSlides
+  introDots.innerHTML = slides
     .map((item, index) => {
       const classes = [
         index === state.introIndex ? "is-active" : "",
@@ -1135,13 +1159,23 @@ function renderIntro() {
     .join("");
 
   introBackButton.disabled = state.introIndex === 0;
-  startButton.textContent = state.introIndex === introSlides.length - 1 ? "탈출 시작" : "다음";
+  startButton.textContent = state.introIndex === slides.length - 1
+    ? state.introMode === "route-shift" ? "13방 진입" : "탈출 시작"
+    : "다음";
 }
 
 function advanceIntro() {
-  if (state.introIndex < introSlides.length - 1) {
+  const slides = activeIntroSlides();
+  if (state.introIndex < slides.length - 1) {
     state.introIndex += 1;
     renderIntro();
+    return;
+  }
+  if (state.introMode === "route-shift") {
+    const pending = state.pendingRouteShiftStart ?? { index: JUDGE_CLEAR_INDEX + 1, options: {} };
+    state.routeShiftBriefingSeen = true;
+    state.pendingRouteShiftStart = null;
+    startGame(pending.index, { ...pending.options, skipRouteShiftBriefing: true });
     return;
   }
   startGame(0);
@@ -1185,7 +1219,9 @@ function renderMenu() {
 
 function showIntro() {
   state.screen = "intro";
+  state.introMode = "main";
   state.introIndex = 0;
+  state.pendingRouteShiftStart = null;
   keys.clear();
   clearVirtualInput();
   startOverlay.classList.add("is-visible");
@@ -1193,6 +1229,21 @@ function showIntro() {
   pauseOverlay.classList.remove("is-visible");
   showPanel("intro");
   renderIntro();
+}
+
+function showRouteShiftBriefing(index, options = {}) {
+  state.screen = "route-shift-intro";
+  state.introMode = "route-shift";
+  state.introIndex = 0;
+  state.pendingRouteShiftStart = { index, options: { ...options } };
+  keys.clear();
+  clearVirtualInput();
+  startOverlay.classList.add("is-visible");
+  endOverlay.classList.remove("is-visible");
+  pauseOverlay.classList.remove("is-visible");
+  showPanel("intro");
+  renderIntro();
+  draw();
 }
 
 function showStageSelect() {
@@ -1323,6 +1374,10 @@ function startEndlessFloor(floor = 1) {
 }
 
 function startGame(index = 0, options = {}) {
+  if (!options.endless && !options.skipRouteShiftBriefing && shouldShowRouteShiftBriefing(index)) {
+    showRouteShiftBriefing(index, options);
+    return;
+  }
   if (options.endless) {
     state.endlessActive = true;
     state.endlessFloor = Math.max(1, Math.floor(options.floor ?? state.endlessFloor ?? 1));
@@ -1356,6 +1411,10 @@ function startGame(index = 0, options = {}) {
   if (intro) showToast(intro.title, intro.toastBody ?? intro.body);
   else if (isTutorialRoom()) showToast(`방 ${index + 1}`, rooms[index].tip);
   focusGameCanvas();
+}
+
+function shouldShowRouteShiftBriefing(index) {
+  return index === JUDGE_CLEAR_INDEX + 1 && !state.routeShiftBriefingSeen;
 }
 
 function pauseGame() {
@@ -1411,10 +1470,7 @@ function startRoom(index) {
   state.failureCount = 0;
   state.hazardPositions = new Map();
   state.hintCooldown = 0;
-  const introDuration = roomIntroDuration(index);
-  const showRouteShiftIntro = isRouteShiftIntroRoom(index) && !state.routeShiftIntroSeen;
-  state.roomIntroTimer = isRouteShiftIntroRoom(index) && !showRouteShiftIntro ? 0 : introDuration;
-  if (showRouteShiftIntro) state.routeShiftIntroSeen = true;
+  state.roomIntroTimer = roomIntroDuration(index);
   state.roomIntroShown = state.roomIntroTimer > 0;
   state.doorWasOpen = false;
   state.syncWasShown = false;
@@ -1453,14 +1509,9 @@ function hasCanvasGuidance() {
   return state.roomIndex < CANVAS_GUIDE_ROOMS;
 }
 
-function isRouteShiftIntroRoom(index = state.roomIndex) {
-  return !state.endlessActive && index === JUDGE_CLEAR_INDEX + 1;
-}
-
 function roomIntroDuration(index = state.roomIndex) {
   if (state.endlessActive) return 1.15;
   if (index === 0) return 2.1;
-  if (index === JUDGE_CLEAR_INDEX + 1) return 4.8;
   return 0;
 }
 
@@ -1468,7 +1519,6 @@ function hasCanvasAssistHud() {
   return (
     hasCanvasGuidance()
     || state.endlessActive
-    || (state.roomIntroTimer > 0 && isRouteShiftIntroRoom())
     || state.echoes.length > 0
     || state.itemMode !== "normal"
     || state.dashCharge
@@ -3559,36 +3609,26 @@ function drawObjectivePointer() {
 
 function drawRoomIntroOverlay() {
   if (state.roomIntroTimer <= 0) return;
-  const routeShift = isRouteShiftIntroRoom();
-  if (!hasCanvasGuidance() && !state.endlessActive && !routeShift) return;
+  if (!hasCanvasGuidance() && !state.endlessActive) return;
   const room = rooms[state.roomIndex];
   const duration = roomIntroDuration();
   const alpha = clamp(state.roomIntroTimer / Math.max(0.1, duration), 0, 1);
-  const overlayW = routeShift ? 690 : state.endlessActive ? 380 : 500;
-  const overlayH = routeShift ? 98 : 40;
+  const overlayW = state.endlessActive ? 380 : 500;
   const overlayX = (W - overlayW) / 2;
   const overlayY = 8;
   ctx.save();
   ctx.globalAlpha = Math.min(0.96, alpha * 1.15);
-  roundRect(overlayX, overlayY, overlayW, overlayH, 14, routeShift ? "rgba(21, 8, 42, 0.82)" : "rgba(16, 9, 43, 0.72)");
-  ctx.strokeStyle = routeShift ? "rgba(255, 91, 168, 0.72)" : "rgba(255, 255, 255, 0.68)";
+  roundRect(overlayX, overlayY, overlayW, 40, 14, "rgba(16, 9, 43, 0.72)");
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.68)";
   ctx.lineWidth = 2;
-  roundedStroke(overlayX, overlayY, overlayW, overlayH, 14);
-  ctx.fillStyle = routeShift ? "#ffd166" : "#1edcc5";
+  roundedStroke(overlayX, overlayY, overlayW, 40, 14);
+  ctx.fillStyle = "#1edcc5";
   ctx.font = "1000 11px Inter, sans-serif";
   ctx.textAlign = "center";
-  ctx.fillText(routeShift ? routeShiftIntro.title : state.endlessActive ? `무한 탑 ${state.endlessFloor}층 · ${room.name}` : `방 ${state.roomIndex + 1} · ${room.name}`, W / 2, 24);
-  if (routeShift) {
-    ctx.fillStyle = "#fff7e8";
-    ctx.font = "900 12px Inter, sans-serif";
-    routeShiftIntro.lines.forEach((line, index) => {
-      ctx.fillText(line, W / 2, 48 + index * 18);
-    });
-  } else {
-    ctx.fillStyle = "#fff7e8";
-    ctx.font = "900 11px Inter, sans-serif";
-    ctx.fillText(room.tip, W / 2, 42);
-  }
+  ctx.fillText(state.endlessActive ? `무한 탑 ${state.endlessFloor}층 · ${room.name}` : `방 ${state.roomIndex + 1} · ${room.name}`, W / 2, 24);
+  ctx.fillStyle = "#fff7e8";
+  ctx.font = "900 11px Inter, sans-serif";
+  ctx.fillText(room.tip, W / 2, 42);
   ctx.restore();
   ctx.textAlign = "left";
 }
@@ -5275,6 +5315,11 @@ window.addEventListener("keydown", (event) => {
     if (key === "enter") startNextRoom();
     else if (key === "r") restartCurrentChallenge();
     else if (key === "m" || key === "escape") showMenu();
+    return;
+  }
+  if ((state.screen === "intro" || state.screen === "route-shift-intro") && !event.repeat) {
+    if (key === "enter" || key === " ") advanceIntro();
+    else if (key === "escape" && state.introMode === "main") showMenu();
     return;
   }
   if (state.screen === "game" && ["arrowleft", "arrowright", "arrowup", "arrowdown", "w", "a", "s", "d", " ", "r", "e"].includes(key)) {
