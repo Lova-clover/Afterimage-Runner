@@ -1222,8 +1222,8 @@ function renderStageSelect() {
       const starMarkup = renderStars(record.bestStars || 0, `room ${index + 1} best stars`);
       const designer = designerTime(room);
       const platinumDone = record.bestMedal === "platinum";
-      const designerText = record.bestStars >= 3 ? `플래티넘 ${formatPrecise(designer)}` : "3성 후 플래티넘";
-      const challengeLabel = platinumDone ? "플래티넘 달성" : record.bestStars >= 3 ? "플래티넘 도전" : ahead ? "심사용 개방" : "첫 도전";
+      const designerText = record.bestStars >= 3 ? `최적 루트 ${formatPrecise(designer)}` : "3성 후 최적 루트";
+      const challengeLabel = platinumDone ? "최적 루트 달성" : record.bestStars >= 3 ? "최적 루트 도전" : ahead ? "심사용 개방" : "첫 도전";
       const challengeClass = platinumDone ? "is-platinum" : record.bestStars >= 3 ? "is-available" : "is-none";
       const routeLabel = index <= JUDGE_CLEAR_INDEX ? "공식 루트" : "고급 아카이브";
       const pbText = record.bestRoute?.length ? `<em>PB 페이스</em>` : "";
@@ -1678,7 +1678,7 @@ function finishStage() {
     : judgeClear
       ? officialQualified ? "진루트 개방" : "기록 초과"
     : result.designerClear
-      ? "디자이너 런"
+      ? "최적 루트"
       : result.stars >= 3
         ? "퍼펙트 런"
         : "클리어";
@@ -1842,18 +1842,18 @@ function renderResultAdvice(result, room, finalRoom, judgeClear = false) {
   }
   if (finalRoom && result.stars >= 3) {
     const total = state.campaignActive ? state.campaignTime : campaignParTime();
-    return `<span>${result.designerClear ? "플래티넘 런" : "비인가 방 전부 통과"}</span><span>20방 누적 ${formatPrecise(total)} / ${formatClock(TRUE_ROUTE_TARGET_SECONDS)}</span><span>삭제된 기록 복원</span><span>러너-07은 혼자 나가지 않았다</span><span>실패는 리셋되지 않았다</span>`;
+    return `<span>${result.designerClear ? "최적 루트" : "비인가 방 전부 통과"}</span><span>20방 누적 ${formatPrecise(total)} / ${formatClock(TRUE_ROUTE_TARGET_SECONDS)}</span><span>삭제된 기록 복원</span><span>러너-07은 혼자 나가지 않았다</span><span>실패는 리셋되지 않았다</span>`;
   }
   const designerGap = Math.max(0, Math.ceil((result.time - result.designerTarget) * 10) / 10);
   if (!result.misses.length) {
     const tags = [
       `<span>${clearFlavorLine()}</span>`,
-      `<span>${result.designerClear ? "플래티넘 런" : "3성 클리어"}</span>`,
+      `<span>${result.designerClear ? "최적 루트" : "3성 클리어"}</span>`,
       `<span>고스트 ${result.ghosts}/${currentParGhosts(room)}</span>`,
       `<span>3성 기록 ${formatPrecise(currentParTime(room))}</span>`,
     ];
-    if (result.designerClear) tags.push(`<span>디자이너 기록 돌파</span>`);
-    else tags.push(`<span>디자이너까지 ${designerGap.toFixed(1)}초</span>`);
+    if (result.designerClear) tags.push(`<span>최적 루트 돌파</span>`);
+    else tags.push(`<span>최적 루트까지 ${designerGap.toFixed(1)}초</span>`);
     if (result.syncs) tags.push(`<span>싱크 ${result.syncs}회</span>`);
     if (result.boostBreaks) tags.push(`<span>돌파 ${result.boostBreaks}회</span>`);
     if (result.flowBonus) tags.push(`<span>루프 체인 -${result.flowBonus.toFixed(1)}초</span>`);
@@ -1941,7 +1941,7 @@ function medalMeta(medal) {
     bronze: ["브론즈 런", "is-bronze"],
     silver: ["실버 런", "is-silver"],
     gold: ["골드 런", "is-gold"],
-    platinum: ["플래티넘 런", "is-platinum"],
+    platinum: ["최적 루트", "is-platinum"],
   }[medal] ?? ["기록 없음", "is-none"];
   return { label: data[0], className: data[1] };
 }
@@ -3148,7 +3148,7 @@ function updateHud() {
   const parTime = currentParTime(room);
   const parGhosts = currentParGhosts(room);
   const paceTarget = state.endlessActive ? Math.max(7, Math.round(parTime * 0.82 * 10) / 10) : platinumUnlocked ? designerTime(room) : parTime;
-  const paceLabel = state.endlessActive ? "탑 보너스" : platinumUnlocked ? "플래티넘" : "3성";
+  const paceLabel = state.endlessActive ? "탑 보너스" : platinumUnlocked ? "최적 루트" : "3성";
   roomText.textContent = state.endlessActive ? `${state.endlessFloor}F` : `${state.roomIndex + 1} / ${rooms.length}`;
   loopText.textContent = String(state.loopNumber);
   echoText.textContent = `${state.echoes.length} / ${MAX_GHOSTS}`;
@@ -3181,11 +3181,11 @@ function updateHud() {
   doorText.textContent = exitOpen ? "열림" : "잠김";
   dangerText.textContent = activeHazards().length ? "동적 위험" : room.lasers.length ? "레이저" : (room.phaseGates ?? []).length ? "위상" : (room.dashGates ?? []).some((gate) => gate.syncOnly) ? "싱크" : (room.sizeGates?.length || room.items?.some((item) => item.type !== "dash")) ? "변형" : room.switches.length > 1 ? "동기화" : "낮음";
   if (record?.bestTime) {
-    const medalLabel = record.bestMedal === "platinum" ? "PT" : `${record.bestStars}성`;
+    const medalLabel = record.bestMedal === "platinum" ? "최적" : `${record.bestStars}성`;
     const pbLabel = record.bestRoute?.length ? "PB" : "";
     const compactBestTime = formatPrecise(record.bestTime).replace(/^00:/, "");
     bestText.innerHTML = `<span>${compactBestTime}</span><small>${[medalLabel, pbLabel].filter(Boolean).join(" · ")}</small>`;
-    bestText.title = `${formatPrecise(record.bestTime)} · ${record.bestMedal === "platinum" ? "Platinum" : `${record.bestStars} stars`}${pbLabel ? " · personal best" : ""}`;
+    bestText.title = `${formatPrecise(record.bestTime)} · ${record.bestMedal === "platinum" ? "최적 루트" : `${record.bestStars} stars`}${pbLabel ? " · personal best" : ""}`;
   } else {
     bestText.textContent = "--";
     bestText.removeAttribute("title");
