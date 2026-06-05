@@ -441,7 +441,7 @@ const rooms = [
     items: [],
     sizeGates: [],
     switches: [{ id: "A", x: 274, y: 392, label: "A" }],
-    gates: [{ id: "gate-a", x: 526, y: 290, w: 42, h: 164, needs: ["A"] }],
+    gates: [{ id: "gate-a", x: 526, y: 70, w: 42, h: 400, needs: ["A"] }],
     lasers: [],
     walls: [{ x: 382, y: 300, w: 126, h: 26 }],
   },
@@ -479,7 +479,7 @@ const rooms = [
     cores: [{ x: 724, y: 270 }],
     items: [{ type: "dash", x: 520, y: 270 }],
     sizeGates: [],
-    dashGates: [{ id: "boost-room-3", x: 650, y: 132, w: 38, h: 276 }],
+    dashGates: [{ id: "boost-room-3", x: 650, y: 70, w: 38, h: 400 }],
     switches: [{ id: "A", x: 244, y: 270, label: "A" }],
     gates: [{ id: "dash-memory-gate", x: 420, y: 84, w: 42, h: 372, needs: ["A"] }],
     lasers: [],
@@ -496,10 +496,10 @@ const rooms = [
     parTime: 18,
     start: { x: 108, y: 270 },
     exit: { x: 842, y: 236, w: 68, h: 68 },
-    cores: [{ x: 730, y: 270 }],
+    cores: [{ x: 768, y: 270 }],
     items: [],
     sizeGates: [],
-    dashGates: [{ id: "sync-boost", x: 700, y: 132, w: 38, h: 276, syncOnly: true }],
+    dashGates: [{ id: "sync-boost", x: 700, y: 70, w: 38, h: 400, syncOnly: true }],
     switches: [{ id: "A", x: 240, y: 270, label: "A" }],
     gates: [{ id: "sync-gate", x: 545, y: 84, w: 42, h: 372, needs: ["A"] }],
     lasers: [],
@@ -518,7 +518,7 @@ const rooms = [
     exit: { x: 842, y: 234, w: 72, h: 72 },
     cores: [{ x: 724, y: 270 }],
     items: [{ type: "grow", x: 190, y: 398 }, { type: "shrink", x: 190, y: 142 }],
-    sizeGates: [{ id: "small-room-5", x: 452, y: 92, w: 42, h: 134, need: "small" }],
+    sizeGates: [{ id: "small-room-5", x: 366, y: 70, w: 42, h: 400, need: "small" }],
     dashGates: [],
     switches: [
       { id: "B", x: 260, y: 416, label: "B+", requires: "big" },
@@ -542,7 +542,7 @@ const rooms = [
     cores: [{ x: 742, y: 270 }],
     items: [{ type: "shrink", x: 220, y: 182 }, { type: "grow", x: 220, y: 358 }, { type: "dash", x: 530, y: 270 }],
     sizeGates: [],
-    dashGates: [{ id: "boost-shift", x: 772, y: 132, w: 36, h: 276 }],
+    dashGates: [{ id: "boost-shift", x: 772, y: 70, w: 36, h: 400 }],
     switches: [
       { id: "C", x: 220, y: 120, label: "C-", requires: "small" },
       { id: "B", x: 220, y: 420, label: "B+", requires: "big" },
@@ -565,12 +565,12 @@ const rooms = [
     cores: [{ x: 742, y: 270 }],
     items: [{ type: "dash", x: 475, y: 420 }],
     sizeGates: [],
-    dashGates: [{ id: "boost-cross", x: 790, y: 132, w: 36, h: 276 }],
+    dashGates: [{ id: "boost-cross", x: 790, y: 70, w: 36, h: 400 }],
     switches: [
       { id: "A", x: 180, y: 120, label: "A" },
       { id: "B", x: 180, y: 420, label: "B" },
     ],
-    gates: [{ id: "cross-gate", x: 665, y: 92, w: 42, h: 356, needs: ["A", "B"] }],
+    gates: [{ id: "cross-gate", x: 665, y: 70, w: 42, h: 400, needs: ["A", "B"] }],
     lasers: [
       { id: "cross-horizontal", x1: 320, y1: 270, x2: 635, y2: 270, blockable: true, requiresBlock: true, recordSpot: { x: 420, y: 228 } },
       { id: "cross-vertical", x1: 508, y1: 92, x2: 508, y2: 448, offWhen: ["A"] },
@@ -596,7 +596,7 @@ const rooms = [
       { id: "B", x: 160, y: 435, label: "B+", requires: "big" },
       { id: "C", x: 235, y: 270, label: "C-", requires: "small" },
     ],
-    gates: [{ id: "break-gate", x: 692, y: 96, w: 44, h: 348, needs: ["B", "C"] }],
+    gates: [{ id: "break-gate", x: 692, y: 70, w: 44, h: 400, needs: ["B", "C"] }],
     lasers: [{ id: "break-laser", x1: 320, y1: 270, x2: 660, y2: 270, blockable: true, requiresBlock: true, recordSpot: { x: 430, y: 228 } }],
     walls: [{ x: 252, y: 70, w: 28, h: 160 }, { x: 252, y: 310, w: 28, h: 160 }],
   },
@@ -614,9 +614,9 @@ const rooms = [
     cores: [{ x: 730, y: 132 }],
     items: [{ type: "dash", x: 500, y: 410 }],
     sizeGates: [],
-    dashGates: [{ id: "boost-chain", x: 790, y: 84, w: 36, h: 180 }],
+    dashGates: [{ id: "boost-chain", x: 790, y: 70, w: 36, h: 400 }],
     switches: [{ id: "A", x: 200, y: 112, label: "A" }],
-    gates: [{ id: "boost-chain-gate", x: 330, y: 250, w: 42, h: 210, needs: ["A"] }],
+    gates: [{ id: "boost-chain-gate", x: 330, y: 70, w: 42, h: 400, needs: ["A"] }],
     lasers: [{ id: "boost-chain-laser", x1: 450, y1: 232, x2: 690, y2: 232, blockable: true, requiresBlock: true, recordSpot: { x: 560, y: 188 } }],
     walls: [{ x: 258, y: 198, w: 100, h: 28 }, { x: 612, y: 260, w: 28, h: 150 }, { x: 700, y: 180, w: 28, h: 150 }],
   },
@@ -634,14 +634,14 @@ const rooms = [
     cores: [{ x: 724, y: 132 }, { x: 724, y: 410 }],
     items: [{ type: "shrink", x: 250, y: 150 }, { type: "grow", x: 250, y: 390 }],
     sizeGates: [
-      { id: "small-compress", x: 515, y: 84, w: 44, h: 140, need: "small" },
-      { id: "big-compress", x: 515, y: 316, w: 44, h: 140, need: "big" },
+      { id: "small-compress", x: 430, y: 70, w: 44, h: 210, need: "small" },
+      { id: "big-compress", x: 520, y: 278, w: 44, h: 192, need: "big" },
     ],
     switches: [
       { id: "C", x: 360, y: 132, label: "C-", requires: "small" },
       { id: "B", x: 360, y: 410, label: "B+", requires: "big" },
     ],
-    gates: [{ id: "compress-gate", x: 650, y: 90, w: 42, h: 360, needs: ["C", "B"] }],
+    gates: [{ id: "compress-gate", x: 650, y: 70, w: 42, h: 400, needs: ["C", "B"] }],
     lasers: [],
     walls: [{ x: 418, y: 250, w: 128, h: 28 }],
   },
@@ -659,7 +659,7 @@ const rooms = [
     cores: [{ x: 742, y: 270 }],
     items: [{ type: "dash", x: 610, y: 420 }],
     sizeGates: [],
-    dashGates: [{ id: "boost-prism", x: 790, y: 120, w: 36, h: 300 }],
+    dashGates: [{ id: "boost-prism", x: 790, y: 70, w: 36, h: 400 }],
     switches: [{ id: "A", x: 190, y: 270, label: "A" }],
     gates: [{ id: "prism-gate", x: 668, y: 80, w: 42, h: 380, needs: ["A"] }],
     lasers: [
@@ -679,7 +679,7 @@ const rooms = [
     parTime: 42,
     start: { x: 108, y: 270 },
     exit: { x: 842, y: 234, w: 72, h: 72 },
-    cores: [{ x: 728, y: 132 }, { x: 728, y: 408 }],
+    cores: [{ x: 746, y: 132 }, { x: 746, y: 408 }],
     items: [{ type: "grow", x: 160, y: 400 }, { type: "shrink", x: 238, y: 160 }, { type: "dash", x: 618, y: 420 }],
     sizeGates: [],
     dashGates: [{ id: "boost-final", x: 800, y: 84, w: 38, h: 372 }],
@@ -705,7 +705,7 @@ const rooms = [
     exit: { x: 842, y: 236, w: 68, h: 68 },
     cores: [{ x: 724, y: 270 }],
     items: [{ type: "phase", x: 320, y: 270 }],
-    phaseGates: [{ id: "phase-intro", x: 558, y: 92, w: 42, h: 356 }],
+    phaseGates: [{ id: "phase-intro", x: 558, y: 70, w: 42, h: 400 }],
     sizeGates: [],
     dashGates: [],
     switches: [],
@@ -726,11 +726,11 @@ const rooms = [
     exit: { x: 842, y: 118, w: 68, h: 68 },
     cores: [{ x: 738, y: 132 }],
     items: [{ type: "phase", x: 540, y: 390 }],
-    phaseGates: [{ id: "phase-key", x: 682, y: 82, w: 42, h: 210 }],
+    phaseGates: [{ id: "phase-key", x: 682, y: 70, w: 42, h: 400 }],
     sizeGates: [],
     dashGates: [],
     switches: [{ id: "A", x: 224, y: 118, label: "A" }],
-    gates: [{ id: "echo-key", x: 430, y: 236, w: 42, h: 220, needs: ["A"] }],
+    gates: [{ id: "echo-key", x: 430, y: 70, w: 42, h: 400, needs: ["A"] }],
     lasers: [],
     walls: [{ x: 300, y: 186, w: 260, h: 28 }, { x: 560, y: 306, w: 28, h: 132 }],
   },
@@ -745,12 +745,12 @@ const rooms = [
     parTime: 28,
     start: { x: 108, y: 270 },
     exit: { x: 842, y: 236, w: 68, h: 68 },
-    cores: [{ x: 736, y: 270 }],
+    cores: [{ x: 776, y: 270 }],
     items: [{ type: "shrink", x: 210, y: 132 }, { type: "grow", x: 210, y: 408 }, { type: "phase", x: 514, y: 214 }],
-    phaseGates: [{ id: "phase-scale", x: 704, y: 122, w: 42, h: 296 }],
+    phaseGates: [{ id: "phase-scale", x: 704, y: 70, w: 42, h: 400 }],
     sizeGates: [
-      { id: "small-scale", x: 384, y: 84, w: 42, h: 142, need: "small" },
-      { id: "big-scale", x: 384, y: 314, w: 42, h: 142, need: "big" },
+      { id: "small-scale", x: 384, y: 70, w: 42, h: 210, need: "small" },
+      { id: "big-scale", x: 384, y: 278, w: 42, h: 192, need: "big" },
     ],
     dashGates: [],
     switches: [
@@ -776,7 +776,7 @@ const rooms = [
     items: [{ type: "phase", x: 242, y: 270 }, { type: "dash", x: 626, y: 410 }],
     phaseGates: [{ id: "phase-spectrum", x: 356, y: 84, w: 42, h: 372 }],
     sizeGates: [],
-    dashGates: [{ id: "boost-spectrum", x: 786, y: 132, w: 38, h: 276 }],
+    dashGates: [{ id: "boost-spectrum", x: 786, y: 70, w: 38, h: 400 }],
     switches: [],
     gates: [],
     lasers: [{ id: "spectrum-beam", x1: 430, y1: 270, x2: 690, y2: 270, blockable: true, requiresBlock: true, recordSpot: { x: 520, y: 226 } }],
@@ -797,7 +797,7 @@ const rooms = [
     items: [],
     phaseGates: [],
     sizeGates: [],
-    dashGates: [{ id: "sync-relay", x: 790, y: 132, w: 36, h: 276, syncOnly: true }],
+    dashGates: [{ id: "sync-relay", x: 790, y: 70, w: 36, h: 400, syncOnly: true }],
     switches: [
       { id: "A", x: 182, y: 116, label: "A" },
       { id: "B", x: 182, y: 424, label: "B" },
@@ -819,17 +819,17 @@ const rooms = [
     exit: { x: 842, y: 236, w: 68, h: 68 },
     cores: [{ x: 720, y: 132 }, { x: 720, y: 408 }],
     items: [{ type: "shrink", x: 220, y: 150 }, { type: "grow", x: 220, y: 390 }, { type: "phase", x: 540, y: 214 }],
-    phaseGates: [{ id: "phase-fork", x: 780, y: 84, w: 42, h: 372 }],
+    phaseGates: [{ id: "phase-fork", x: 780, y: 70, w: 42, h: 400 }],
     sizeGates: [
-      { id: "small-fork", x: 430, y: 84, w: 44, h: 140, need: "small" },
-      { id: "big-fork", x: 430, y: 316, w: 44, h: 140, need: "big" },
+      { id: "small-fork", x: 430, y: 70, w: 44, h: 210, need: "small" },
+      { id: "big-fork", x: 430, y: 278, w: 44, h: 192, need: "big" },
     ],
     dashGates: [],
     switches: [
       { id: "C", x: 310, y: 132, label: "C-", requires: "small" },
       { id: "B", x: 310, y: 408, label: "B+", requires: "big" },
     ],
-    gates: [{ id: "fork-lock", x: 630, y: 84, w: 42, h: 372, needs: ["C", "B"] }],
+    gates: [{ id: "fork-lock", x: 630, y: 70, w: 42, h: 400, needs: ["C", "B"] }],
     lasers: [],
     walls: [{ x: 520, y: 250, w: 100, h: 28 }],
   },
@@ -844,17 +844,17 @@ const rooms = [
     parTime: 48,
     start: { x: 108, y: 270 },
     exit: { x: 842, y: 236, w: 70, h: 70 },
-    cores: [{ x: 722, y: 132 }, { x: 722, y: 408 }],
-    items: [{ type: "grow", x: 164, y: 420 }, { type: "shrink", x: 244, y: 162 }, { type: "phase", x: 520, y: 270 }, { type: "dash", x: 612, y: 420 }],
-    phaseGates: [{ id: "phase-merge", x: 596, y: 84, w: 42, h: 372 }],
+    cores: [{ x: 746, y: 132 }, { x: 746, y: 408 }],
+    items: [{ type: "grow", x: 164, y: 420 }, { type: "shrink", x: 244, y: 162 }, { type: "phase", x: 520, y: 270 }, { type: "dash", x: 548, y: 420 }],
+    phaseGates: [{ id: "phase-merge", x: 596, y: 70, w: 42, h: 400 }],
     sizeGates: [],
-    dashGates: [{ id: "boost-merge", x: 790, y: 120, w: 38, h: 300 }],
+    dashGates: [{ id: "boost-merge", x: 790, y: 70, w: 38, h: 400 }],
     switches: [
       { id: "A", x: 164, y: 96, label: "A" },
       { id: "B", x: 164, y: 444, label: "B+", requires: "big" },
       { id: "C", x: 258, y: 270, label: "C-", requires: "small" },
     ],
-    gates: [{ id: "merge-lock", x: 678, y: 84, w: 42, h: 372, needs: ["A", "B", "C"] }],
+    gates: [{ id: "merge-lock", x: 678, y: 70, w: 42, h: 400, needs: ["A", "B", "C"] }],
     lasers: [{ id: "merge-beam", x1: 330, y1: 270, x2: 568, y2: 270, blockable: true, requiresBlock: true, recordSpot: { x: 450, y: 226 } }],
     walls: [{ x: 306, y: 70, w: 28, h: 150 }, { x: 306, y: 320, w: 28, h: 150 }, { x: 470, y: 70, w: 28, h: 124 }, { x: 470, y: 346, w: 28, h: 124 }],
   },
@@ -871,18 +871,18 @@ const rooms = [
     exit: { x: 842, y: 234, w: 72, h: 72 },
     cores: [{ x: 724, y: 132 }, { x: 724, y: 408 }],
     items: [{ type: "grow", x: 160, y: 402 }, { type: "shrink", x: 238, y: 158 }, { type: "phase", x: 536, y: 270 }],
-    phaseGates: [{ id: "phase-memory", x: 604, y: 84, w: 42, h: 372 }],
+    phaseGates: [{ id: "phase-memory", x: 604, y: 70, w: 42, h: 400 }],
     sizeGates: [
-      { id: "small-memory", x: 396, y: 84, w: 42, h: 134, need: "small" },
-      { id: "big-memory", x: 396, y: 322, w: 42, h: 134, need: "big" },
+      { id: "small-memory", x: 396, y: 70, w: 42, h: 210, need: "small" },
+      { id: "big-memory", x: 396, y: 278, w: 42, h: 192, need: "big" },
     ],
-    dashGates: [{ id: "sync-memory", x: 794, y: 84, w: 38, h: 372, syncOnly: true }],
+    dashGates: [{ id: "sync-memory", x: 794, y: 70, w: 38, h: 400, syncOnly: true }],
     switches: [
       { id: "A", x: 160, y: 96, label: "A" },
       { id: "B", x: 160, y: 444, label: "B+", requires: "big" },
       { id: "C", x: 262, y: 270, label: "C-", requires: "small" },
     ],
-    gates: [{ id: "memory-lock", x: 674, y: 84, w: 42, h: 372, needs: ["A", "B", "C"] }],
+    gates: [{ id: "memory-lock", x: 674, y: 70, w: 42, h: 400, needs: ["A", "B", "C"] }],
     lasers: [{ id: "memory-beam", x1: 322, y1: 270, x2: 578, y2: 270, blockable: true, requiresBlock: true, recordSpot: { x: 458, y: 226 } }],
     walls: [{ x: 300, y: 70, w: 28, h: 150 }, { x: 300, y: 320, w: 28, h: 150 }, { x: 508, y: 70, w: 28, h: 132 }, { x: 508, y: 338, w: 28, h: 132 }],
   },
@@ -2963,7 +2963,11 @@ function updateHazards(dt = 0) {
         return true;
       }
       if (target?.type === "echo" && target.distance <= (hazard.radius ?? 32) + 12) {
-        if (state.hintCooldown <= 0) showContextHint("고스트 유인", "추적 장치가 잔상을 쫓고 있다.");
+        const hintKey = `sentry-bait:${hazard.id ?? rawHazard.id ?? "default"}`;
+        if (!state.conditionMarks.has(hintKey) && state.hintCooldown <= 0) {
+          state.conditionMarks.add(hintKey);
+          showContextHint("고스트 유인", "추적 장치가 잔상을 쫓고 있다.");
+        }
         continue;
       }
     }
@@ -3228,7 +3232,7 @@ function getChecklistItems(room) {
     items.push({ key: `switch:${sw.id}`, label: sw.label, done: active.has(sw.id), target: sw, color: switchColor(sw.id) });
   }
   for (const gate of room.dashGates ?? []) {
-    items.push({ key: `boost:${gate.id}`, label: gate.syncOnly ? "싱크 대시" : "부스트", done: dashGateBroken(gate), target: { x: gate.x + gate.w / 2, y: gate.y + gate.h / 2 }, color: "#1edcc5" });
+    items.push({ key: `boost:${gate.id}`, label: gate.syncOnly ? "싱크 대시" : "부스트", done: dashGateBroken(gate), target: { x: gate.x + gate.w / 2, y: gate.y + gate.h / 2 }, color: gate.syncOnly ? "#ffd166" : "#1edcc5" });
   }
   for (const gate of room.phaseGates ?? []) {
     items.push({ key: `phase:${gate.id}`, label: "위상", done: phaseGateOpen(gate), target: { x: gate.x + gate.w / 2, y: gate.y + gate.h / 2 }, color: "#b261ff" });
@@ -4065,10 +4069,14 @@ function drawDashGate(gate) {
   const broken = dashGateBroken(gate);
   const cx = gate.x + gate.w / 2;
   const cy = gate.y + gate.h / 2;
+  const syncOnly = Boolean(gate.syncOnly);
+  const idleColor = syncOnly ? "#ffd166" : "#ff5ba8";
+  const idleStroke = syncOnly ? "rgba(255, 209, 102, 0.92)" : "rgba(255, 91, 168, 0.88)";
+  const readyColor = "#1edcc5";
   if (broken) {
     ctx.save();
     ctx.globalCompositeOperation = "lighter";
-    drawSprite("gate-streak-teal", cx, cy, 86, gate.h + 36, { alpha: 0.34 });
+    drawSprite("gate-streak-teal", cx, cy, 86, gate.h + 36, { alpha: syncOnly ? 0.48 : 0.34 });
     ctx.restore();
     return;
   }
@@ -4076,14 +4084,14 @@ function drawDashGate(gate) {
   const pulse = 0.5 + Math.sin(performance.now() / 135) * 0.12;
   const label = gate.syncOnly ? "싱크 대시" : "부스트";
   ctx.save();
-  ctx.shadowColor = state.dashCharge ? "#1edcc5" : "#ff5ba8";
+  ctx.shadowColor = state.dashCharge ? readyColor : idleColor;
   ctx.shadowBlur = state.dashCharge ? 26 : 18;
   roundRect(gate.x, gate.y, gate.w, gate.h, 14, "rgba(20, 8, 44, 0.76)");
-  ctx.strokeStyle = state.dashCharge ? "rgba(30, 220, 197, 0.95)" : "rgba(255, 91, 168, 0.88)";
+  ctx.strokeStyle = state.dashCharge ? "rgba(30, 220, 197, 0.95)" : idleStroke;
   ctx.lineWidth = 4;
   roundedStroke(gate.x, gate.y, gate.w, gate.h, 14);
   ctx.globalCompositeOperation = "lighter";
-  ctx.strokeStyle = `rgba(255, 91, 168, ${pulse})`;
+  ctx.strokeStyle = syncOnly ? `rgba(255, 209, 102, ${pulse})` : `rgba(255, 91, 168, ${pulse})`;
   ctx.lineWidth = 3;
   for (let y = gate.y + 26; y < gate.y + gate.h - 18; y += 34) {
     ctx.beginPath();
@@ -4091,22 +4099,27 @@ function drawDashGate(gate) {
     ctx.lineTo(gate.x + gate.w - 8, y + 16);
     ctx.stroke();
   }
-  drawSprite("laser-gate-pink", cx, cy, gate.w + 46, gate.h + 38, { alpha: 0.5 });
-  drawWarningBadge(cx, gate.y - 21, state.dashCharge);
+  if (syncOnly) {
+    drawSprite("gate-streak-teal", cx, cy, gate.w + 52, gate.h + 42, { alpha: 0.52 });
+  } else {
+    drawSprite("laser-gate-pink", cx, cy, gate.w + 46, gate.h + 38, { alpha: 0.5 });
+  }
+  drawWarningBadge(cx, gate.y - 21, state.dashCharge, idleColor);
   ctx.globalCompositeOperation = "source-over";
-  ctx.fillStyle = state.dashCharge ? "#1edcc5" : "#ff5ba8";
+  ctx.fillStyle = state.dashCharge ? readyColor : idleColor;
   ctx.font = "1000 10px Inter, sans-serif";
   ctx.textAlign = "center";
   ctx.fillText(label, cx, gate.y - 44);
   ctx.restore();
 }
 
-function drawWarningBadge(x, y, ready) {
+function drawWarningBadge(x, y, ready, idleColor = "#ff5ba8") {
+  const color = ready ? "#1edcc5" : idleColor;
   ctx.save();
   ctx.globalCompositeOperation = "source-over";
-  ctx.shadowColor = ready ? "#1edcc5" : "#ff5ba8";
+  ctx.shadowColor = color;
   ctx.shadowBlur = 14;
-  ctx.fillStyle = ready ? "rgba(30, 220, 197, 0.96)" : "rgba(255, 91, 168, 0.96)";
+  ctx.fillStyle = color;
   ctx.strokeStyle = "rgba(255, 255, 255, 0.9)";
   ctx.lineWidth = 3;
   ctx.beginPath();
