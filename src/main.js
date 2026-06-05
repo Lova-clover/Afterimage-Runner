@@ -936,7 +936,7 @@ const routeShiftSlides = [
     kicker: "비인가 기록 / 13방 진입",
     title: "공식 루트 밖이다.",
     body: "12번째 방은 탈출구가 아니라 경계선이었다.\n\n아카이브가 지운 방들이 다시 켜지고, 시간선이 서로 다른 방향으로 접히기 시작한다.",
-    image: "/assets/ui/slides/story-3.png",
+    image: "/assets/ui/slides/route-shift-1.png",
     fallback: "switch",
   },
   {
@@ -944,7 +944,7 @@ const routeShiftSlides = [
     kicker: "시간선 꼬임 / 패러독스 경고",
     title: "잔상과 부딪히지 마라.",
     body: "13방부터 현재의 너와 기록된 잔상이 같은 지점에 겹치면 시간 패러독스가 발생한다.\n\n실패가 길이 되지만, 이제 실패와 같은 자리에 서면 붕괴한다.",
-    image: "/assets/ui/slides/story-2.png",
+    image: "/assets/ui/slides/route-shift-2.png",
     fallback: "rewind",
   },
   {
@@ -952,7 +952,7 @@ const routeShiftSlides = [
     kicker: "새 규칙 / 위상과 추적",
     title: "위협까지 설계하라.",
     body: "위상 코어는 닫힌 막을 잠깐 통과시킨다.\n추적 장치와 움직이는 함정은 현재뿐 아니라 잔상 경로까지 압박한다.\n\n이제 기록은 스위치가 아니라 시간선 전체를 맡는다.",
-    image: "/assets/ui/slides/tutorial-4.png",
+    image: "/assets/ui/slides/route-shift-3.png",
     fallback: "archive",
   },
 ];
