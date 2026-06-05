@@ -588,7 +588,7 @@ const rooms = [
     start: { x: 108, y: 270 },
     exit: { x: 842, y: 234, w: 72, h: 72 },
     cores: [{ x: 746, y: 270 }],
-    items: [{ type: "grow", x: 160, y: 392 }, { type: "shrink", x: 235, y: 185 }],
+    items: [{ type: "grow", x: 160, y: 392 }, { type: "shrink", x: 214, y: 185 }],
     sizeGates: [],
     dashGates: [],
     switches: [
@@ -679,7 +679,7 @@ const rooms = [
     start: { x: 108, y: 270 },
     exit: { x: 842, y: 234, w: 72, h: 72 },
     cores: [{ x: 728, y: 132 }, { x: 728, y: 408 }],
-    items: [{ type: "grow", x: 160, y: 400 }, { type: "shrink", x: 238, y: 160 }, { type: "dash", x: 590, y: 420 }],
+    items: [{ type: "grow", x: 160, y: 400 }, { type: "shrink", x: 238, y: 160 }, { type: "dash", x: 618, y: 420 }],
     sizeGates: [],
     dashGates: [{ id: "boost-final", x: 800, y: 84, w: 38, h: 372 }],
     switches: [
@@ -745,7 +745,7 @@ const rooms = [
     start: { x: 108, y: 270 },
     exit: { x: 842, y: 236, w: 68, h: 68 },
     cores: [{ x: 736, y: 270 }],
-    items: [{ type: "shrink", x: 210, y: 132 }, { type: "grow", x: 210, y: 408 }, { type: "phase", x: 514, y: 270 }],
+    items: [{ type: "shrink", x: 210, y: 132 }, { type: "grow", x: 210, y: 408 }, { type: "phase", x: 514, y: 214 }],
     phaseGates: [{ id: "phase-scale", x: 704, y: 122, w: 42, h: 296 }],
     sizeGates: [
       { id: "small-scale", x: 384, y: 84, w: 42, h: 142, need: "small" },
@@ -772,7 +772,7 @@ const rooms = [
     start: { x: 108, y: 270 },
     exit: { x: 842, y: 236, w: 68, h: 68 },
     cores: [{ x: 722, y: 270 }],
-    items: [{ type: "phase", x: 242, y: 270 }, { type: "dash", x: 616, y: 410 }],
+    items: [{ type: "phase", x: 242, y: 270 }, { type: "dash", x: 626, y: 410 }],
     phaseGates: [{ id: "phase-spectrum", x: 356, y: 84, w: 42, h: 372 }],
     sizeGates: [],
     dashGates: [{ id: "boost-spectrum", x: 786, y: 132, w: 38, h: 276 }],
@@ -817,7 +817,7 @@ const rooms = [
     start: { x: 108, y: 270 },
     exit: { x: 842, y: 236, w: 68, h: 68 },
     cores: [{ x: 720, y: 132 }, { x: 720, y: 408 }],
-    items: [{ type: "shrink", x: 220, y: 150 }, { type: "grow", x: 220, y: 390 }, { type: "phase", x: 540, y: 270 }],
+    items: [{ type: "shrink", x: 220, y: 150 }, { type: "grow", x: 220, y: 390 }, { type: "phase", x: 540, y: 214 }],
     phaseGates: [{ id: "phase-fork", x: 780, y: 84, w: 42, h: 372 }],
     sizeGates: [
       { id: "small-fork", x: 430, y: 84, w: 44, h: 140, need: "small" },
@@ -1369,7 +1369,7 @@ function startRoom(index) {
   state.sampleTimer = 0;
   state.stageTrace = [];
   state.traceSampleTimer = 0;
-  state.bestRoute = state.endlessActive ? null : bestRouteFor(index);
+  state.bestRoute = null;
   state.collected = new Set();
   state.itemsCollected = new Set();
   state.itemMode = "normal";
@@ -1643,6 +1643,7 @@ function finishStage() {
   const room = rooms[state.roomIndex];
   pushStageTrace(false);
   const result = calculateStageResult(room);
+  const completedEchoes = state.echoes.slice(0, MAX_GHOSTS);
   state.lastStageResult = result;
   const endless = state.endlessActive;
   if (endless) {
@@ -1691,7 +1692,7 @@ function finishStage() {
   finalLoops.textContent = String(state.loopNumber);
   finalEchoes.textContent = `${result.ghosts} / ${currentParGhosts(room)}`;
   finalTime.textContent = formatPrecise(result.time);
-  renderLoopReplay(result, room, finalRoom, judgeClear);
+  renderLoopReplay(result, room, finalRoom, judgeClear, completedEchoes);
   if (resultInsight) resultInsight.innerHTML = renderResultInsight(result, room, finalRoom, judgeClear);
   const enterLabel = endless ? "Enter 다음 층" : finalRoom ? "Enter 처음부터" : judgeClear ? officialQualified ? "Enter 진루트" : "Enter 다시 도전" : "Enter 다음";
   const menuLabel = judgeClear ? "M 탈출한다" : "M 메뉴";
@@ -1704,6 +1705,19 @@ function finishStage() {
     endless ? "다음 층은 더 빠르고 좁다." : finalRoom ? "전부 나야." : judgeClear ? officialQualified ? "남은 실패 로그를 따라갈 수 있다." : "12방 누적 시간을 더 줄여라." : room.clearLine,
   );
   playSfx(finalRoom || judgeClear ? "win" : "clear");
+  clearCompletedStageAfterimages();
+  updateHud();
+}
+
+function clearCompletedStageAfterimages() {
+  state.echoes = [];
+  state.recording = [];
+  state.sampleTimer = 0;
+  state.echoLocks = new Set();
+  state.echoPower = 0;
+  state.syncCooldown = 0;
+  state.syncPulse = 0;
+  state.syncRush = 0;
 }
 
 function updateCampaignRun(result) {
@@ -1725,12 +1739,12 @@ function officialRouteQualified() {
   return officialRouteTime() <= OFFICIAL_TARGET_SECONDS;
 }
 
-function renderLoopReplay(result, room, finalRoom, judgeClear) {
+function renderLoopReplay(result, room, finalRoom, judgeClear, replayEchoes = state.echoes) {
   if (!resultReplay) return;
-  const replayEchoes = state.echoes.slice(0, MAX_GHOSTS);
+  replayEchoes = replayEchoes.slice(0, MAX_GHOSTS);
   const echoes = Math.max(0, Math.min(MAX_GHOSTS, result.ghosts));
   const participants = [
-    { label: "RUNNER-07", color: "#fff3c7", role: "현재", current: true },
+    { label: "R-07", color: "#fff3c7", role: "현재", current: true },
     ...Array.from({ length: echoes }, (_, index) => {
       const echo = replayEchoes[index];
       const role = echo ? describeEchoRole(echo) : `G${index + 1}`;
@@ -1758,9 +1772,14 @@ function renderLoopReplay(result, room, finalRoom, judgeClear) {
     </div>
     ${roles ? `<div class="replay-roles">${roles}</div>` : ""}
     <div class="replay-track">
+      <span class="replay-pad">REC</span>
+      <span class="replay-line is-a"></span>
+      <span class="replay-line is-b"></span>
+      <span class="replay-exit"></span>
       ${participants.map((item, index) => `
-        <i style="--color:${item.color}; --delay:${index * 0.16}s">
+        <i class="${item.current ? "is-current" : "is-echo"}" style="--color:${item.color}; --delay:${index * 0.16}s; --lane-y:${20 + (index % 5) * 10}px">
           <b>${item.label}</b>
+          <em>${item.role}</em>
         </i>
       `).join("")}
     </div>
@@ -2029,31 +2048,87 @@ function updatePlayer(dt) {
   const rushScale = state.syncRush > 0 ? 1.18 : 1;
   const speedScale = bodyScale * rushScale;
   const speed = dashing ? DASH_SPEED : p.speed * speedScale;
-  if (moving) {
-    p.x += mx * speed * dt;
-    p.y += my * speed * dt;
-  }
 
   const room = rooms[state.roomIndex];
   const radius = playerRadius();
-  p.x = clamp(p.x, 54 + radius, W - 54 - radius);
-  p.y = clamp(p.y, 54 + radius, H - 54 - radius);
-  if (dashing) breakDashGates(room, radius);
-  const solids = solidRects(room);
-  for (const wall of solids) {
-    const wasTouching = circleRectOverlap({ x: p.px, y: p.py }, radius, wall);
-    const isTouching = circleRectOverlap(p, radius, wall);
-    if (!wasTouching && !isTouching && pathHitsRect({ x: p.px, y: p.py }, p, wall, radius + 2, 14)) {
-      p.x = p.px;
-      p.y = p.py;
-      break;
-    }
+  const canBreakDashGates = dashing && state.powerDash > 0.01;
+  if (canBreakDashGates) breakDashGates(room, radius);
+
+  let solids = solidRects(room);
+  if (canBreakDashGates) {
+    const dashGates = new Set(room.dashGates ?? []);
+    solids = solids.filter((solid) => !dashGates.has(solid));
   }
-  for (const wall of solids) resolveCircleRect(p, radius, wall);
+
+  if (moving) {
+    movePlayerWithSolids(p, mx * speed * dt, my * speed * dt, radius, solids);
+  } else {
+    clampPlayerToArena(p, radius);
+  }
+
+  if (dashing) breakDashGates(room, radius);
+  for (const wall of solidRects(room)) resolveCircleRect(p, radius, wall);
+  clampPlayerToArena(p, radius);
 
   if (dashing && Math.random() < 0.8) {
     particle(p.x - mx * 20, p.y - my * 20, "#ff5ba8", rand(3, 7), -mx * rand(60, 130), -my * rand(60, 130), 0.26, true);
   }
+}
+
+function movePlayerWithSolids(player, dx, dy, radius, solids) {
+  const maxStep = Math.max(8, radius * 0.55);
+  const steps = Math.max(1, Math.ceil(Math.max(Math.abs(dx), Math.abs(dy)) / maxStep));
+  const stepX = dx / steps;
+  const stepY = dy / steps;
+
+  for (let i = 0; i < steps; i += 1) {
+    movePlayerAxis(player, "x", stepX, radius, solids);
+    movePlayerAxis(player, "y", stepY, radius, solids);
+  }
+}
+
+function movePlayerAxis(player, axis, amount, radius, solids) {
+  if (Math.abs(amount) < 0.001) return;
+
+  const before = { x: player.x, y: player.y };
+  player[axis] += amount;
+  clampPlayerToArena(player, radius);
+
+  for (const wall of solids) {
+    if (!circleRectOverlap(player, radius, wall)) continue;
+    resolveCircleRectAxis(player, radius, wall, axis, amount, before);
+    clampPlayerToArena(player, radius);
+  }
+}
+
+function resolveCircleRectAxis(circle, r, rect, axis, delta, before) {
+  if (axis === "x") {
+    const left = rect.x - r;
+    const right = rect.x + rect.w + r;
+    if (delta > 0 && before.x <= left + 0.001) {
+      circle.x = left;
+    } else if (delta < 0 && before.x >= right - 0.001) {
+      circle.x = right;
+    } else {
+      circle.x = Math.abs(circle.x - left) <= Math.abs(circle.x - right) ? left : right;
+    }
+    return;
+  }
+
+  const top = rect.y - r;
+  const bottom = rect.y + rect.h + r;
+  if (delta > 0 && before.y <= top + 0.001) {
+    circle.y = top;
+  } else if (delta < 0 && before.y >= bottom - 0.001) {
+    circle.y = bottom;
+  } else {
+    circle.y = Math.abs(circle.y - top) <= Math.abs(circle.y - bottom) ? top : bottom;
+  }
+}
+
+function clampPlayerToArena(player, radius) {
+  player.x = clamp(player.x, 54 + radius, W - 54 - radius);
+  player.y = clamp(player.y, 54 + radius, H - 54 - radius);
 }
 
 function dashGateBroken(gate) {
@@ -4592,16 +4667,43 @@ function resolveCircleRect(circle, r, rect) {
   const dx = circle.x - cx;
   const dy = circle.y - cy;
   const d = Math.hypot(dx, dy);
-  if (d >= r || d === 0) {
-    if (d === 0 && circle.x > rect.x && circle.x < rect.x + rect.w && circle.y > rect.y && circle.y < rect.y + rect.h) {
-      circle.x = circle.px;
-      circle.y = circle.py;
-    }
+  if (d >= r) {
+    return;
+  }
+  if (d === 0) {
+    resolveCircleRectInterior(circle, r, rect);
     return;
   }
   const push = r - d;
   circle.x += (dx / d) * push;
   circle.y += (dy / d) * push;
+}
+
+function resolveCircleRectInterior(circle, r, rect) {
+  if (Number.isFinite(circle.px) && circle.px <= rect.x) {
+    circle.x = rect.x - r;
+    return;
+  }
+  if (Number.isFinite(circle.px) && circle.px >= rect.x + rect.w) {
+    circle.x = rect.x + rect.w + r;
+    return;
+  }
+  if (Number.isFinite(circle.py) && circle.py <= rect.y) {
+    circle.y = rect.y - r;
+    return;
+  }
+  if (Number.isFinite(circle.py) && circle.py >= rect.y + rect.h) {
+    circle.y = rect.y + rect.h + r;
+    return;
+  }
+
+  const exits = [
+    { axis: "x", value: rect.x - r, distance: Math.abs(circle.x - (rect.x - r)) },
+    { axis: "x", value: rect.x + rect.w + r, distance: Math.abs(circle.x - (rect.x + rect.w + r)) },
+    { axis: "y", value: rect.y - r, distance: Math.abs(circle.y - (rect.y - r)) },
+    { axis: "y", value: rect.y + rect.h + r, distance: Math.abs(circle.y - (rect.y + rect.h + r)) },
+  ].sort((a, b) => a.distance - b.distance);
+  circle[exits[0].axis] = exits[0].value;
 }
 
 function circleRectOverlap(circle, r, rect) {
